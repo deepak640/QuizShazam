@@ -1,0 +1,85 @@
+###
+POST http://localhost:3000/create-quiz
+Content-Type: application/json
+
+{
+  "title": "General Knowledge Quiz",
+  "description": "Test your general knowledge with this fun quiz!",
+  "questions": [
+    {
+      "questionText": "What is the capital of France?",
+      "options": [
+        { "text": "Berlin", "isCorrect": false },
+        { "text": "Madrid", "isCorrect": false },
+        { "text": "Paris", "isCorrect": true },
+        { "text": "Rome", "isCorrect": false }
+      ]
+    },
+    {
+      "questionText": "Who wrote 'To Kill a Mockingbird'?",
+      "options": [
+        { "text": "Harper Lee", "isCorrect": true },
+        { "text": "Mark Twain", "isCorrect": false },
+        { "text": "F. Scott Fitzgerald", "isCorrect": false },
+        { "text": "Ernest Hemingway", "isCorrect": false }
+      ]
+    },
+    {
+      "questionText": "What is the chemical symbol for water?",
+      "options": [
+        { "text": "O2", "isCorrect": false },
+        { "text": "H2O", "isCorrect": true },
+        { "text": "CO2", "isCorrect": false },
+        { "text": "NaCl", "isCorrect": false }
+      ]
+    },
+    {
+      "questionText": "Which planet is known as the Red Planet?",
+      "options": [
+        { "text": "Earth", "isCorrect": false },
+        { "text": "Mars", "isCorrect": true },
+        { "text": "Jupiter", "isCorrect": false },
+        { "text": "Saturn", "isCorrect": false }
+      ]
+    },
+    {
+      "questionText": "Who is the author of the Harry Potter series?",
+      "options": [
+        { "text": "J.K. Rowling", "isCorrect": true },
+        { "text": "J.R.R. Tolkien", "isCorrect": false },
+        { "text": "George R.R. Martin", "isCorrect": false },
+        { "text": "Suzanne Collins", "isCorrect": false }
+      ]
+    }
+  ],
+  "authorId":"lkasjkdhajkshd"
+}
+###
+
+POST http://localhost:3000/users/register
+Content-Type: application/json
+
+{
+  "username": "deepsdasasdasdksdsa",
+  "email":"sad;sadasadaasdassdsa",
+  "password":"skajdljas"
+}
+###
+
+POST http://localhost:3000/users/login
+Content-Type: application/json
+
+{
+  "email":"sad;sadasdsa",
+  "password":"skajdljas"
+}
+###
+
+GET http://localhost:3000/users/protected
+Authorization: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2NTk2MTBkYjMwODRjNmZhYmUyNzA0MSIsImlhdCI6MTcxNzEzODkzNSwiZXhwIjoxNzE3MTQyNTM1fQ.NFj4NPpexmQpzhCywlSSPqQkAYC2QyiUYQxYmd8gyBE
+###~
+
+GET http://localhost:3000/quizzes
+###
+
+GET http://localhost:3000/users/quiz/6658b2340732322c9a514986/questions
