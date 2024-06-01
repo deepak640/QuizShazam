@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-
+import { SlBadge } from "react-icons/sl";
 const Home = () => {
   return (
     <>
@@ -22,13 +22,48 @@ const Home = () => {
       </div>
       <hr className="style-eight" />
       <div className="featured">
-        <div className="">
+        <div className="featured-info">
           <p>Featured Quizzes</p>
           <h1>Challenge yourself</h1>
-          <p>
+          <p className="featured-desc">
             Explore a wide range of quizzes on various topics and test your
             knowledge.
           </p>
+          <div className="featured-cards">
+            <div>
+              <h4>Quiz</h4>
+              <p>
+                Lorem ipsum dolor sit amet consectetur, adipisicing elit.
+                Eligendi, aperiam.
+              </p>
+              <p>
+                <SlBadge />
+                Top score: 95
+              </p>
+            </div>
+            <div>
+              <h4>Quiz</h4>
+              <p>
+                Lorem ipsum dolor sit amet consectetur, adipisicing elit.
+                Eligendi, aperiam.
+              </p>
+              <p>
+                <SlBadge />
+                Top score: 95
+              </p>
+            </div>
+            <div>
+              <h4>Quiz</h4>
+              <p>
+                Lorem ipsum dolor sit amet consectetur, adipisicing elit.
+                Eligendi, aperiam.
+              </p>
+              <p>
+                <SlBadge />
+                Top score: 95
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </>
