@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import Header from "./shared/Header"
-const Container = ({ children }) => {
+import Header from "./shared/Header";
+const Container = ({ children, access }) => {
   const location = useLocation();
   const [show, setshow] = useState(false);
   useEffect(() => {
-    setshow(location.pathname !== "/negi");
-  }, [location.pathname]);
-
-  return <>{
-    show && <Header/>
-  }
-  {children}
-  </>;
+    setshow(access.includes(location.pathname));
+  }, [location.pathname, access]);
+  return (
+    <>
+      {show && <Header />}
+      {children}
+    </>
+  );
 };
 
 export default Container;

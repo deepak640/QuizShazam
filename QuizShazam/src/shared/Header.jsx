@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 const Header = () => {
   const toggleNav = () => {
@@ -7,6 +8,11 @@ const Header = () => {
     navbar.classList.toggle("active");
     mobileNav.classList.toggle("hamburger-active");
   };
+  const [Log, setLog] = useState(false);
+  useEffect(() => {
+    setLog(localStorage.getItem("user"));
+  }, []);
+
   return (
     <>
       <nav>
@@ -16,17 +22,15 @@ const Header = () => {
         </div>
         <ul>
           <li>
-            <a href="/">Home</a>
+            <Link to="/">Home</Link>
           </li>
           <li>
-            <a href="/services">Services</a>
+            <Link to="/services">Services</Link>
           </li>
           <li>
-            <a href="/blog">Blog</a>
+            <Link to="/contact">Contact Us</Link>
           </li>
-          <li>
-            <a href="/blog">Contact Us</a>
-          </li>
+          <li>{Log ? <Link to="/">Logout</Link> : <Link to="/login">Login</Link>}</li>
         </ul>
         <div className="hamburger" onClick={toggleNav}>
           <span className="line"></span>
@@ -37,21 +41,21 @@ const Header = () => {
       <div className="menubar">
         <ul>
           <li>
-            <a href="/">Home</a>
+            <Link to="/">Home</Link>
           </li>
           <li>
-            <a href="/services">Services</a>
+            <Link to="/services">Services</Link>
           </li>
           <li>
-            <a href="/blog">Blog</a>
+            <Link to="/contact">Contact Us</Link>
           </li>
           <li>
-            <a href="/contact">Contact Us</a>
+            <Link to="/Login">Log</Link>
           </li>
         </ul>
       </div>
     </>
   );
-}
+};
 
-export default Header
+export default Header;
