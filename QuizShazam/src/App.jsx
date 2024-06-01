@@ -1,6 +1,6 @@
 import React from "react";
 import Navigation from "./Routes/Navigation";
-import Container from "./Container";
+import "./App.css"
 const App = () => {
   return (
     <>

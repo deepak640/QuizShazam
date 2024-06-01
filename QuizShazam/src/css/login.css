@@ -1,0 +1,72 @@
+/* Login page ------------------- */
+.Login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 90vh;
+}
+.Login-container form {
+  background-color: white;
+  padding: 20px 50px;
+  margin: 10px 0;
+  width: 400px;
+  border-radius: 5px;
+  letter-spacing: 1px;
+}
+.Login-container h2 {
+  font-family: Arial;
+  text-align: center;
+}
+.Login-container div {
+  padding-bottom: 30px;
+}
+.Login-container div > input {
+  width: 100%;
+  padding: 15px 15px;
+  margin: 5px 0;
+  border: 1px solid rgb(194, 189, 189);
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+.Login-container div > label {
+  font-family: Arial;
+  font-size: 85%;
+  font-weight: bold;
+  color: rgb(85, 78, 78);
+}
+.Login-container div > label::after {
+  content: "*";
+  color: red;
+}
+.Login-container label[for="checkbox"] {
+  font-family: Arial;
+  font-size: 85%;
+  user-select: none;
+}
+
+.Login-container button {
+  width: 100%;
+  font-weight: bold;
+  background-color: #b927fc;
+  color: white;
+  padding: 15px 20px;
+  margin: 20px 0;
+  border: none;
+  border-radius: 4px;
+}
+.Login-container button:hover {
+  background-color: #c153f4;
+}
+.Login-container span {
+  display: inline-flex;
+  align-items: center;
+}
+.Login-container a {
+  text-decoration: none;
+  display: block;
+  width: max-content;
+  margin: auto;
+}
+.Login-container a:active {
+  color: inherit;
+}

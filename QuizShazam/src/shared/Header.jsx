@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-
+import "../css/header.css";
 const Header = () => {
   const toggleNav = () => {
     const mobileNav = document.querySelector(".hamburger");
@@ -30,7 +30,9 @@ const Header = () => {
           <li>
             <Link to="/contact">Contact Us</Link>
           </li>
-          <li>{Log ? <Link to="/">Logout</Link> : <Link to="/login">Login</Link>}</li>
+          <li>
+            {Log ? <Link to="/">Logout</Link> : <Link to="/login">Login</Link>}
+          </li>
         </ul>
         <div className="hamburger" onClick={toggleNav}>
           <span className="line"></span>
