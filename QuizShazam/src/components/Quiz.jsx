@@ -38,12 +38,15 @@ const Quiz = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState([]); // initialize answers state as an empty array
-  const [selectedOptionIndex, setSelectedOptionIndex] = useState(null);
-  //...
+  const [answers, setAnswers] = useState([]);
+  // initialize answers state as an empty array
+  const [selectedOptions, setSelectedOptions] = useState({}); // Initialize an empty object to store selected options
 
   const handleOptionClick = (questionId, optionIndex) => {
-     setSelectedOptionIndex(optionIndex);
+    setSelectedOptions((prevOptions) => ({
+      ...prevOptions,
+      [questionId]: optionIndex,
+    }));
     const existingAnswer = answers.find(
       (answer) => answer.question === questionId
     );
@@ -102,7 +105,7 @@ const Quiz = () => {
             <div
               key={index}
               className={`option ${
-                index === selectedOptionIndex ? "selected" : ""
+                selectedOptions[question] === index ? "selected" : ""
               }`}
               onClick={() =>
                 handleOptionClick(

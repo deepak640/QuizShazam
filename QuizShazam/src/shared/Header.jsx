@@ -52,7 +52,9 @@ const Header = () => {
             <Link to="/contact">Contact Us</Link>
           </li>
           <li>
-            <Link to="/Login">Log</Link>
+            <Link to="/Login" onClick={localStorage.clear()}>
+              Log
+            </Link>
           </li>
         </ul>
       </div>

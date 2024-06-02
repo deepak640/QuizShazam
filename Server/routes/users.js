@@ -16,22 +16,29 @@ router.get("/", function (req, res, next) {
 
 router.post("/register", async (req, res) => {
   const { username, email, password } = req.body;
-  const hashed = bcrypt.hashSync(password, salt);
+
   try {
     const exist = await UserModel.findOne({ email });
     if (exist) {
-      return res.status(401).json({ error: "user already exist" });
-    } else {
-      const User = new UserModel({
-        username,
-        email,
-        password: hashed,
-      });
-      User.save();
-      res.json(User._id);
+      return res.status(401).json({ error: "User already exists" });
     }
+
+    const newUser = new UserModel({
+      username,
+      email,
+      password: password ? bcrypt.hashSync(password, salt) : undefined,
+    });
+
+    await newUser.save();
+
+    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+
+    res.status(200).json({ token });
   } catch (error) {
     console.log("🚀 ~ router.post ~ error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

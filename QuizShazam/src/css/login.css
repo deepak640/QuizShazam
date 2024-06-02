@@ -44,7 +44,7 @@
   user-select: none;
 }
 
-.Login-container button {
+.Login-container .signin-button {
   width: 100%;
   font-weight: bold;
   background-color: #b927fc;
@@ -54,7 +54,7 @@
   border: none;
   border-radius: 4px;
 }
-.Login-container button:hover {
+.Login-container .signin-button:hover {
   background-color: #c153f4;
 }
 .Login-container span {
@@ -69,4 +69,46 @@
 }
 .Login-container a:active {
   color: inherit;
+}
+
+.google {
+  max-width: 320px;
+  display: flex;
+  padding: 0.5rem 1.4rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  text-align: center;
+  text-transform: uppercase;
+  vertical-align: middle;
+  align-items: center;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  gap: 0.75rem;
+  color: rgb(65, 63, 63);
+  background-color: #fff;
+  cursor: pointer;
+}
+.signin-google {
+  display: flex;
+  padding: 0.5rem 2em;
+  width:max-content;
+  text-align: center;
+  text-transform: uppercase;
+  vertical-align: middle;
+  align-items: center;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  gap: 0.75rem;
+  color: rgb(65, 63, 63);
+  background-color: #fff;
+  cursor: pointer;
+}
+
+.google svg,
+.signin-google svg {
+  height: 24px;
+}
+.account {
+  display:flex;
+  gap: 10px;
 }

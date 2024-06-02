@@ -60,9 +60,8 @@ POST http://localhost:3000/users/register
 Content-Type: application/json
 
 {
-  "username": "deepsdasasdasdksdsa",
-  "email":"sad;sadasadaasdassdsa",
-  "password":"skajdljas"
+  "username": "dpsasdksdsa",
+  "email":"sadassdsa"
 }
 ###
 
