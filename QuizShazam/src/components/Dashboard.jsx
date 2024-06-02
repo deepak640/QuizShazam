@@ -1,23 +1,32 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { IoArrowForward } from "react-icons/io5";
 import { Link } from "react-router-dom";
-import "../css/quiz.css"
+import axios from "axios";
+import "../css/quiz.css";
 const Dashboard = () => {
+  const [quizzes, setquiz] = useState([]);
+  useEffect(() => {
+    const GetData = async () => {
+      const res = await axios.get("http://localhost:3000/quizzes");
+      setquiz(res.data);
+    };
+    return () => {
+      GetData();
+    };
+  }, []);
+
   return (
     <div>
       <div className="quiz-cards">
-        {[...Array(5)].map((_, index) => {
+        {quizzes.map((data, index) => {
           return (
             <div className="cards" key={index}>
-              <h5>Driver Mechanical Transport</h5>
-              <p>
-                Lorem ipsum dolor sit amet consectetur adipisicing elit.
-                Repellendus neque repudiandae omnis?
-              </p>
-              <p>questions : 10</p>
+              <h5>{data.title}</h5>
+              <p>{data.description}</p>
+              <p>questions : {data.questions.length}</p>
               <div>
-                <p>Author : Deepak</p>
-                <Link to={`/dashboard/quiz/23`}>
+                <p>Author : {data.author}</p>
+                <Link to={`/dashboard/quiz/${data._id}`}>
                   <IoArrowForward />
                 </Link>
               </div>

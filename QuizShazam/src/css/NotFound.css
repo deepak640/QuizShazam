@@ -1,0 +1,30 @@
+.content-center {
+  text-align: center;
+  color: black;
+  background: linear-gradient(123deg, #b927fc 40%, #2c64fc 77%);
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  height: 100vh;
+}
+.error {
+  font-size: 100px;
+  margin-bottom: 1px;
+}
+.content-center p {
+  font-size: 22pt;
+}
+.content-center button {
+  border: none;
+  padding: 10px;
+  font-size: 16pt;
+  text-align: center;
+  font-family: "Montserrat", sans-serif;
+  background: #ff512f; /* fallback for old browsers */
+  background: linear-gradient(to right, #b927fc 0%, #2c64fc 100%);
+  /* Chrome 10-25, Safari   5.1-6 */
+  /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+  color: white;
+  cursor: pointer;
+  margin-top: 20px;
+}

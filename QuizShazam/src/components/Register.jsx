@@ -97,9 +97,9 @@ const Register = () => {
         </button>
         <hr />
         <div className="account">
-            <Link to="/login" className="signin-google">
-              login
-            </Link>
+          <Link to="/login" className="signin-google">
+            login
+          </Link>
           <button
             className="signin-google"
             type="button"

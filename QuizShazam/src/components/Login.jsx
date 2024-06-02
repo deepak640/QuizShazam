@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "../css/login.css";
 import axios from "axios";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
@@ -9,7 +9,7 @@ const Login = () => {
     email: "",
     password: "",
   });
-
+  const Navigate = useNavigate();
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -23,13 +23,12 @@ const Login = () => {
     const provider = new GoogleAuthProvider();
     try {
       const { user } = await signInWithPopup(auth, provider);
-      console.log("🚀 ~ SignInWithGoogle ~ user:", user)
-      // const res = await axios.post("http://localhost:3000/users/register", {
-      //   username: user.displayName,
-      //   email: user.email,
-      // });
-      // localStorage.setItem("user", JSON.stringify(res.data));
-      // Navigate("/dashboard");
+      const res = await axios.post("http://localhost:3000/users/login", {
+        email: user.email,
+        username: user.displayName,
+      });
+      localStorage.setItem("user", JSON.stringify(res.data));
+      Navigate("/dashboard");
     } catch (error) {
       console.log(error);
     }
@@ -77,13 +76,19 @@ const Login = () => {
           <label htmlFor="checkbox">Remember me</label>
         </span>
         <br />
-        <button type="submit" className="signin-button">LOG IN</button>
+        <button type="submit" className="signin-button">
+          LOG IN
+        </button>
         <hr />
         <div className="account">
           <Link to="/register" className="signin-google">
             Register
           </Link>
-          <button className="signin-google" type="button" onClick={SignInWithGoogle}>
+          <button
+            className="signin-google"
+            type="button"
+            onClick={SignInWithGoogle}
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               preserveAspectRatio="xMidYMid"

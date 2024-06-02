@@ -27,6 +27,7 @@ router.post("/register", async (req, res) => {
       username,
       email,
       password: password ? bcrypt.hashSync(password, salt) : undefined,
+      googleAuth: password ? false : true,
     });
 
     await newUser.save();
@@ -43,21 +44,46 @@ router.post("/register", async (req, res) => {
 });
 
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password ,username} = req.body;
+  console.log("🚀 ~ router.post ~ req.body:", req.body);
+
   try {
     const user = await UserModel.findOne({ email });
+
+    // Google login
+    if (email && !password) {
+      if (user) {
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+          expiresIn: "1h",
+        });
+        return res.status(200).json({ token });
+      }
+      const newUser = new UserModel({ username,email, googleAuth: true });
+      await newUser.save();
+      const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
+        expiresIn: "1h",
+      });
+      return res.status(200).json({ token });
+    }
+
+    // Login with email and password
     if (!user) {
       return res.status(400).json({ error: "User not found" });
+    }
+
+    if (user.googleAuth) {
+      return res.status(400).json({ error: "Use Google login" });
     }
 
     const isMatch = bcrypt.compareSync(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ error: "Invalid password" });
     }
+
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
-    res.status(200).json({ token: token });
+    res.status(200).json({ token });
   } catch (error) {
     console.error("🚀 ~ router.post ~ error:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -93,7 +119,7 @@ router.get("/user/results", Authentication, async (req, res) => {
 
 router.get("/quiz/:id/questions", async (req, res) => {
   const { id } = req.params;
-
+  res.set("Cache-Control", "no-store");
   try {
     const quiz = await Quiz.findById(id).populate("questions");
     if (!quiz) {
