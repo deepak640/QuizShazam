@@ -6,7 +6,7 @@ var Authentication = require("../middleware/auth");
 var UserModel = require("../model/user");
 const Quiz = require("../model/quiz");
 const Question = require("../model/question");
-const Result = require("../model/response");
+const Response = require("../model/response");
 /* GET users listing. */
 var salt = bcrypt.genSaltSync(10);
 
@@ -154,7 +154,7 @@ router.post("/submit-quiz", Authentication, async (req, res) => {
         }
       }
     }
-
+    console.log(answers)
     const response = new Response({
       user: userId,
       quiz: quizId,
@@ -165,6 +165,7 @@ router.post("/submit-quiz", Authentication, async (req, res) => {
     await response.save();
     res.status(201).send({ message: "Quiz submitted successfully", score });
   } catch (error) {
+    console.log("🚀 ~ router.post ~ error:", error)
     res.status(500).send({ message: "Error submitting quiz", error });
   }
 });

@@ -51,12 +51,12 @@ const Quiz = () => {
       [questionId]: optionIndex,
     }));
     const existingAnswer = answers.find(
-      (answer) => answer.question === questionId
+      (answer) => answer.questionId === questionId
     );
     if (existingAnswer) {
       setAnswers(
         answers.map((answer) =>
-          answer.question === questionId
+          answer.questionId === questionId
             ? { ...answer, selectedOption: optionIndex }
             : answer
         )
@@ -64,7 +64,7 @@ const Quiz = () => {
     } else {
       setAnswers([
         ...answers,
-        { question: questionId, selectedOption: optionIndex },
+        { questionId: questionId, selectedOption: optionIndex },
       ]);
     }
   };
@@ -85,9 +85,23 @@ const Quiz = () => {
     }
   };
 
-  const handleSubmitClick = () => {
+  const handleSubmitClick = async () => {
+    console.log(answers)
     if (answers.length === quizData.length) {
-      alert("submited");
+      const { token } = JSON.parse(localStorage.getItem("user"));
+      const res = await axios.post(
+        "http://localhost:3000/users/submit-quiz",
+        {
+          quizId: id,
+          answers,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      console.log("🚀 ~ handleSubmitClick ~ res:", res);
     } else {
       alert("please finish");
     }
@@ -121,7 +135,7 @@ const Quiz = () => {
     return <h1>No quiz data available</h1>;
   }
 
-  const { questionText, options } = quizData[currentQuestionIndex];
+  const { questionText,_id, options } = quizData[currentQuestionIndex];
 
   return (
     <>
@@ -138,13 +152,10 @@ const Quiz = () => {
                 <div
                   key={index}
                   className={`option ${
-                    selectedOptions[questionText] === index ? "selected" : ""
+                    selectedOptions[_id] === index ? "selected" : ""
                   }`}
                   onClick={() =>
-                    handleOptionClick(
-                      quizData[currentQuestionIndex].questionText,
-                      index
-                    )
+                    handleOptionClick(quizData[currentQuestionIndex]._id, index)
                   }
                 >
                   {option.text}

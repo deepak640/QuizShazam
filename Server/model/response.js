@@ -6,7 +6,7 @@ const responseSchema = new Schema({
   quiz: { type: Schema.Types.ObjectId, ref: "Quiz" },
   answers: [
     {
-      question: { type: Schema.Types.ObjectId, ref: "Question" },
+      questionId: { type: Schema.Types.ObjectId, ref: "Question" },
       selectedOption: Number, // Index of the selected option
     },
   ],

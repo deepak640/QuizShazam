@@ -31,7 +31,13 @@ const Header = () => {
             <Link to="/contact">Contact Us</Link>
           </li>
           <li>
-            {Log ? <Link to="/">Logout</Link> : <Link to="/login">Login</Link>}
+            {Log ? (
+              <Link to="/" onClick={() => localStorage.clear()}>
+                Logout
+              </Link>
+            ) : (
+              <Link to="/login">Login</Link>
+            )}
           </li>
         </ul>
         <div className="hamburger" onClick={toggleNav}>
@@ -52,9 +58,13 @@ const Header = () => {
             <Link to="/contact">Contact Us</Link>
           </li>
           <li>
-            <Link to="/Login" onClick={localStorage.clear()}>
-              Log
-            </Link>
+            {Log ? (
+              <Link to="/" onClick={() => localStorage.clear()}>
+                Logout
+              </Link>
+            ) : (
+              <Link to="/login">Login</Link>
+            )}
           </li>
         </ul>
       </div>
