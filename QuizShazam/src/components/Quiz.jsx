@@ -2,38 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "../css/quiz.css";
 import axios from "axios";
-// const quizData = [
-//   {
-//     question: "What is the capital of France?",
-//     options: ["Berlin", "Madrid", "Paris", "Rome"],
-//     answer: "Paris",
-//   },
-//   {
-//     question: "What is the largest planet in our solar system?",
-//     options: ["Earth", "Jupiter", "Mars", "Saturn"],
-//     answer: "Jupiter",
-//   },
-//   {
-//     question: "Who wrote 'Hamlet'?",
-//     options: [
-//       "Charles Dickens",
-//       "William Shakespeare",
-//       "Mark Twain",
-//       "Leo Tolstoy",
-//     ],
-//     answer: "William Shakespeare",
-//   },
-//   {
-//     question: "What is the boiling point of water?",
-//     options: ["90°C", "100°C", "110°C", "120°C"],
-//     answer: "100°C",
-//   },
-//   {
-//     question: "What is the speed of light?",
-//     options: ["300,000 km/s", "150,000 km/s", "450,000 km/s", "600,000 km/s"],
-//     answer: "300,000 km/s",
-//   },
-// ];
+import Loader from "../shared/Loader";
 const Quiz = () => {
   const { id } = useParams();
   const [quizData, setquizData] = useState();
@@ -124,7 +93,7 @@ const Quiz = () => {
   }, [id]);
 
   if (loading) {
-    return <h1>Loading...</h1>;
+    return <Loader/>;
   }
 
   if (error) {
