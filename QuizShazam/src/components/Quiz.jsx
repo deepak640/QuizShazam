@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "../css/quiz.css";
+import { message, Space } from "antd";
 import axios from "axios";
 import Loader from "../shared/Loader";
 const Quiz = () => {
   const { id } = useParams();
   const [quizData, setquizData] = useState();
+  const [messageApi, contextHolder] = message.useMessage();
   const navigate = useNavigate();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -55,26 +57,42 @@ const Quiz = () => {
   };
 
   const handleSubmitClick = async () => {
-    console.log(answers)
+    console.log(answers);
     if (answers.length === quizData.length) {
-      const { token } = JSON.parse(localStorage.getItem("user"));
-      const res = await axios.post(
-        "http://localhost:3000/users/submit-quiz",
-        {
-          quizId: id,
-          answers,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
+      try {
+        const { token } = JSON.parse(localStorage.getItem("user"));
+        const res = await axios.post(
+          "http://localhost:3000/users/submit-quiz",
+          {
+            // quizId: id,
+            answers,
           },
-        }
-      );
-      console.log("🚀 ~ handleSubmitClick ~ res:", res);
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        messageApi.open({
+          type: "success",
+          content: "This is a success message",
+          duration: 2.5,
+          onClose: () => navigate("/"),
+        });
+      } catch (error) {
+        messageApi.open({
+          type: "error",
+          content: error.message,
+        });
+      }
     } else {
-      alert("please finish");
+      messageApi.open({
+        type: "warning",
+        content: "Finish Quiz",
+      });
     }
   };
+
   useEffect(() => {
     const getData = async () => {
       try {
@@ -85,7 +103,7 @@ const Quiz = () => {
         setLoading(false);
       } catch (error) {
         console.error("Error fetching quiz data:", error);
-        setError("Error fetching quiz data");
+        setError("Quiz not found");
         setLoading(false);
       }
     };
@@ -93,7 +111,7 @@ const Quiz = () => {
   }, [id]);
 
   if (loading) {
-    return <Loader/>;
+    return <Loader />;
   }
 
   if (error) {
@@ -104,10 +122,11 @@ const Quiz = () => {
     return <h1>No quiz data available</h1>;
   }
 
-  const { questionText,_id, options } = quizData[currentQuestionIndex];
+  const { questionText, _id, options } = quizData[currentQuestionIndex];
 
   return (
     <>
+      {contextHolder}
       {quizData ? (
         <section className="quiz-main">
           <div className="quiz-container">

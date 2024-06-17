@@ -15,7 +15,7 @@ router.get("/", function (req, res, next) {
 });
 
 router.post("/register", async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, password, photoURL } = req.body;
 
   try {
     const exist = await UserModel.findOne({ email });
@@ -27,6 +27,7 @@ router.post("/register", async (req, res) => {
       username,
       email,
       password: password ? bcrypt.hashSync(password, salt) : undefined,
+      photoURL: password ? "" : photoURL,
       googleAuth: password ? false : true,
     });
 
@@ -36,7 +37,7 @@ router.post("/register", async (req, res) => {
       expiresIn: "1h",
     });
 
-    res.status(200).json({ token });
+    res.status(200).json({ token, photoURL });
   } catch (error) {
     console.log("🚀 ~ router.post ~ error:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -44,8 +45,7 @@ router.post("/register", async (req, res) => {
 });
 
 router.post("/login", async (req, res) => {
-  const { email, password ,username} = req.body;
-  console.log("🚀 ~ router.post ~ req.body:", req.body);
+  const { email, password, username, photoURL } = req.body;
 
   try {
     const user = await UserModel.findOne({ email });
@@ -53,17 +53,23 @@ router.post("/login", async (req, res) => {
     // Google login
     if (email && !password) {
       if (user) {
+        const {photoURL} = user
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
           expiresIn: "1h",
         });
-        return res.status(200).json({ token });
+        return res.status(200).json({ token,photoURL });
       }
-      const newUser = new UserModel({ username,email, googleAuth: true });
+      const newUser = new UserModel({
+        username,
+        email,
+        photoURL,
+        googleAuth: true,
+      });
       await newUser.save();
       const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
         expiresIn: "1h",
       });
-      return res.status(200).json({ token });
+      return res.status(200).json({ token, photoURL });
     }
 
     // Login with email and password
@@ -83,7 +89,8 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
-    res.status(200).json({ token });
+    const {photoURL} = user
+    res.status(200).json({ token,photoURL });
   } catch (error) {
     console.error("🚀 ~ router.post ~ error:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -154,7 +161,7 @@ router.post("/submit-quiz", Authentication, async (req, res) => {
         }
       }
     }
-    console.log(answers)
+    console.log(answers);
     const response = new Response({
       user: userId,
       quiz: quizId,
@@ -165,7 +172,7 @@ router.post("/submit-quiz", Authentication, async (req, res) => {
     await response.save();
     res.status(201).send({ message: "Quiz submitted successfully", score });
   } catch (error) {
-    console.log("🚀 ~ router.post ~ error:", error)
+    console.log("🚀 ~ router.post ~ error:", error);
     res.status(500).send({ message: "Error submitting quiz", error });
   }
 });

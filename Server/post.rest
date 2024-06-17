@@ -81,4 +81,4 @@ Authorization: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2NTk2MTBkY
 GET http://localhost:3000/quizzes
 ###
 
-GET http://localhost:3000/users/quiz/6658b2340732322c9a514986/questions
+GET http://localhost:3000/users/quiz/6658b234072322c9a514986/questions
