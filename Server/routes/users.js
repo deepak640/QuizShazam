@@ -18,17 +18,16 @@ router.post("/register", async (req, res) => {
   const { username, email, password, photoURL } = req.body;
 
   try {
-    const exist = await UserModel.findOne({ email });
-    if (exist) {
+    if (await UserModel.findOne({ email })) {
       return res.status(401).json({ error: "User already exists" });
     }
 
     const newUser = new UserModel({
       username,
       email,
-      password: password ? bcrypt.hashSync(password, salt) : undefined,
+      password: password && bcrypt.hashSync(password, salt),
       photoURL: password ? "" : photoURL,
-      googleAuth: password ? false : true,
+      googleAuth: !password,
     });
 
     await newUser.save();
@@ -36,8 +35,7 @@ router.post("/register", async (req, res) => {
     const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
-
-    res.status(200).json({ token, photoURL });
+    res.status(200).json({ token, photoURL: password ? "" : photoURL });
   } catch (error) {
     console.log("🚀 ~ router.post ~ error:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -45,40 +43,13 @@ router.post("/register", async (req, res) => {
 });
 
 router.post("/login", async (req, res) => {
-  const { email, password, username, photoURL } = req.body;
+  const { email, password } = req.body;
 
   try {
     const user = await UserModel.findOne({ email });
 
-    // Google login
-    if (email && !password) {
-      if (user) {
-        const {photoURL} = user
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-          expiresIn: "1h",
-        });
-        return res.status(200).json({ token,photoURL });
-      }
-      const newUser = new UserModel({
-        username,
-        email,
-        photoURL,
-        googleAuth: true,
-      });
-      await newUser.save();
-      const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
-        expiresIn: "1h",
-      });
-      return res.status(200).json({ token, photoURL });
-    }
-
-    // Login with email and password
     if (!user) {
       return res.status(400).json({ error: "User not found" });
-    }
-
-    if (user.googleAuth) {
-      return res.status(400).json({ error: "Use Google login" });
     }
 
     const isMatch = bcrypt.compareSync(password, user.password);
@@ -89,8 +60,40 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
-    const {photoURL} = user
-    res.status(200).json({ token,photoURL });
+    const { photoURL } = user;
+    res.status(200).json({ token, photoURL });
+  } catch (error) {
+    console.error("🚀 ~ router.post ~ error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/login/google", async (req, res) => {
+  const { email, username, photoURL } = req.body;
+
+  try {
+    const user = await UserModel.findOne({ email });
+
+    if (user) {
+      const { photoURL } = user;
+      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+        expiresIn: "1h",
+      });
+      return res.status(200).json({ token, photoURL });
+    }
+
+    const newUser = new UserModel({
+      username,
+      email,
+      photoURL,
+      googleAuth: true,
+    });
+    await newUser.save();
+
+    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+    return res.status(200).json({ token, photoURL });
   } catch (error) {
     console.error("🚀 ~ router.post ~ error:", error);
     res.status(500).json({ error: "Internal server error" });

@@ -37,6 +37,7 @@ const Register = () => {
       const res = await axios.post("http://localhost:3000/users/register", {
         username: user.displayName,
         email: user.email,
+        photoURL:user.photoURL,
       });
       localStorage.setItem("user", JSON.stringify(res.data));
       Navigate("/dashboard");

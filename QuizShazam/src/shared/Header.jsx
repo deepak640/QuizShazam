@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "../css/header.css";
 const Header = () => {
   const [Log, setLog] = useState(false);
   const user = JSON.parse(localStorage.getItem("user"));
+  const Navigate = useNavigate();
   const photoURL = user ? user.photoURL : "X";
-  console.log("🚀 ~ Header ~ photoURL:", photoURL)
   const [active, setActive] = useState(false);
   const toggleNav = () => {
     const mobileNav = document.querySelector(".hamburger");
@@ -17,6 +17,7 @@ const Header = () => {
     localStorage.clear();
     setActive(false);
     setLog(false); // Force a re-render to update the login status
+    Navigate("/")
   };
   useEffect(() => {
     setLog(localStorage.getItem("user"));

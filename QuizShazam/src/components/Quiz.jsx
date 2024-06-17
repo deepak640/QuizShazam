@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "../css/quiz.css";
-import { message, Space } from "antd";
+import { message } from "antd";
 import axios from "axios";
 import Loader from "../shared/Loader";
 const Quiz = () => {
@@ -64,7 +64,7 @@ const Quiz = () => {
         const res = await axios.post(
           "http://localhost:3000/users/submit-quiz",
           {
-            // quizId: id,
+            quizId: id,
             answers,
           },
           {
