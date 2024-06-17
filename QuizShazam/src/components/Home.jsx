@@ -16,7 +16,7 @@ const Home = () => {
           compare your performance over time with your personal dashboard. Ready
           to get started?"
         </p>
-        <Link className="btn-grad" to={"/quiz"}>
+        <Link className="btn-grad" to={"/dashboard"}>
           Take a quiz
         </Link>
       </div>
