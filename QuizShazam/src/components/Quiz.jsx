@@ -91,22 +91,6 @@ const Quiz = () => {
     }
   };
 
-  // useEffect(() => {
-  //   const getData = async () => {
-  //     try {
-  //       const res = await axios.get(
-  //         `http://localhost:3000/users/quiz/${id}/questions`
-  //       );
-  //       setquizData(res.data);
-  //       setLoading(false);
-  //     } catch (error) {
-  //       console.error("Error fetching quiz data:", error);
-  //       setError("Quiz not found");
-  //       setLoading(false);
-  //     }
-  //   };
-  //   getData();
-  // }, [id]);
   const [quizData, error, loading] = useAPI(
     `http://localhost:3000/users/quiz/${id}/questions`
   );

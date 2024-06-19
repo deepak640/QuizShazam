@@ -3,33 +3,29 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "../auth/Firebase";
+import { useFormik } from "formik";
+import { message } from "antd";
 const Register = () => {
-  const Navigate = useNavigate();
-  const [user, setUser] = useState({
-    username: "",
-    email: "",
-    password: "",
-  });
+  const [messageApi, contextHolder] = message.useMessage();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const Navigate = useNavigate();
+
+  const formSubmit = async (values) => {
     try {
       const res = await axios.post(
         "http://localhost:3000/users/register",
-        user
+        values
       );
       localStorage.setItem("user", JSON.stringify(res.data));
       Navigate("/dashboard");
-    } catch (error) {}
+    } catch (error) {
+      messageApi.open({
+        type: "error",
+        content: error.message,
+      });
+    }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setUser((prevUser) => ({
-      ...prevUser,
-      [name]: value,
-    }));
-  };
   const SignInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     try {
@@ -37,7 +33,7 @@ const Register = () => {
       const res = await axios.post("http://localhost:3000/users/register", {
         username: user.displayName,
         email: user.email,
-        photoURL:user.photoURL,
+        photoURL: user.photoURL,
       });
       localStorage.setItem("user", JSON.stringify(res.data));
       Navigate("/dashboard");
@@ -45,8 +41,20 @@ const Register = () => {
       console.log(error);
     }
   };
+  
+  const { handleChange, values, handleSubmit } = useFormik({
+    initialValues: {
+      username: "",
+      email: "",
+      password: "",
+    },
+    onSubmit: (values) => {
+      formSubmit(values);
+    },
+  });
   return (
     <div className="Login-container">
+      {contextHolder}
       <form onSubmit={handleSubmit}>
         <h2>Register</h2>
         <div>
@@ -56,7 +64,7 @@ const Register = () => {
             type="text"
             id="username"
             name="username"
-            value={user.username}
+            value={values.username}
             placeholder="Enter username"
             onChange={handleChange}
             required
@@ -69,7 +77,7 @@ const Register = () => {
             type="email"
             id="email"
             name="email"
-            value={user.email}
+            value={values.email}
             placeholder="Enter email"
             onChange={handleChange}
             required
@@ -82,7 +90,7 @@ const Register = () => {
             type="password"
             id="password"
             name="password"
-            value={user.password}
+            value={values.password}
             placeholder="Enter password"
             onChange={handleChange}
             required
