@@ -1,0 +1,124 @@
+
+.profile-section {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 20px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+.user-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #ddd;
+}
+
+.user-details img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  margin-right: 20px;
+}
+
+.user-details span {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.user-details h4 {
+  margin-top: 0;
+}
+
+.password-field {
+  margin-top: 20px;
+}
+
+.password-field label {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.password-field input[type="password"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+
+.quiz-taken {
+  padding: 20px;
+}
+
+.quiz-taken h3 {
+  margin-top: 0;
+}
+
+.user-cards {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.user-cards h4 {
+  margin-top: 0;
+  width: 100%;
+}
+
+.user-cards p {
+  margin-bottom: 10px;
+  width: 48%;
+}
+
+
+@media (max-width: 768px) {
+  .profile-section {
+    padding: 10px;
+  }
+  .user-details {
+    flex-direction: column;
+    align-items: center;
+  }
+  .user-details img {
+    margin: 20px auto;
+  }
+  .password-field {
+    margin-top: 10px;
+  }
+  .quiz-taken {
+    margin-top: 20px;
+  }
+  .user-cards {
+    padding: 10px;
+  }
+  .user-cards p {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-section {
+    padding: 5px;
+  }
+  .user-details img {
+    width: 60px;
+    height: 60px;
+  }
+  .password-field input[type="password"] {
+    padding: 5px;
+  }
+  .user-cards {
+    padding: 5px;
+  }
+}

@@ -97,7 +97,7 @@ nav ul li a:hover {
   z-index: 2;
 }
 .active {
-  right: 0;
+  left: 0;
   box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
 }
 
@@ -108,7 +108,10 @@ nav ul li a:hover {
 .menubar ul li {
   margin-bottom: 32px;
 }
-
+nav .active ul {
+  display: flex;
+  flex-direction: column;
+}
 .menubar ul li a {
   text-decoration: none;
   color: #000;
@@ -195,7 +198,7 @@ nav ul li a:hover {
 .menu {
   position: absolute;
   top: calc(100% + 10px);
-  right: 70px;
+  right: 0;
   min-height: 100px;
   background: #fff;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
@@ -217,10 +220,13 @@ nav ul li a:hover {
   z-index: -1;
 }
 
-.menu.active {
+.menu.profile-active {
   opacity: 1;
   transform: translateY(0);
   visibility: visible;
+}
+.profile-active {
+  right: 0;
 }
 
 /* menu links */

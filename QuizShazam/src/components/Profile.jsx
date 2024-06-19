@@ -1,38 +1,53 @@
-import React from "react";
+import React, { useEffect } from "react";
 import Loader from "../shared/Loader";
+import "../css/profile.css";
 import useAPI from "../Hooks/useAPI";
+import Cookies from "js-cookie";
 const Profile = () => {
-  const { token } = JSON.parse(localStorage.getItem("user"));
+  const { token } = JSON.parse(Cookies.get("user"));
   const [data, error, loading] = useAPI(
     "http://localhost:3000/users/profile",
     token
   );
   if (!data) return <Loader />;
   const { quizzes, profile } = data;
-
   return (
-    <div>
+    <div className="profile-section">
       <div className="user-details">
         <div>
           <img src={profile.photoURL} alt="#" />
-          <h4>{profile.username}</h4>
-          <p>{profile.email}</p>
+          <span>
+            <h4>{profile.username}</h4>
+            <p>{profile.email}</p>
+          </span>
         </div>
-        <label htmlFor="password">password</label>
-        <input type="password" name="password" />
+        <span className="password-field">
+          <label htmlFor="password">password</label>
+          <br />
+          <input type="password" id="password" name="password" />
+        </span>
       </div>
       <div className="quiz-taken">
         <h3>quiz taken</h3>
         {quizzes &&
           quizzes.map((data, i) => {
             return (
-              <div className="cards" key={i}>
+              <div className="user-cards" key={i}>
                 <h4>{data.title}</h4>
                 <p>{data.description}</p>
                 <p>timetaken : 15minutes</p>
               </div>
             );
           })}
+        {/* {[...Array(5)].map((data, i) => {
+            return (
+              <div className="cards" key={i}>
+                <h4>asdas</h4>
+                <p>asds</p>
+                <p>timetaken : 15minutes</p>
+              </div>
+            );
+          })} */}
       </div>
     </div>
   );
