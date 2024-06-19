@@ -8,8 +8,9 @@ import Register from "../components/Register";
 import Dashboard from "../components/Dashboard";
 import Quiz from "../components/Quiz";
 import NotFound from "../components/NotFound";
+import Profile from "../components/Profile";
 const Navigation = () => {
-  const HeaderPaths = ["/", "/dashboard"];
+  const HeaderPaths = ["/", "/dashboard","/profile"];
   return (
     <>
       <BrowserRouter>
@@ -21,6 +22,7 @@ const Navigation = () => {
             <Route path="/register" element={<Register />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/quiz/:id" element={<Quiz />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Container>

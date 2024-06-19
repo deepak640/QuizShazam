@@ -64,17 +64,12 @@ const Header = () => {
             <div className={`menu ${active && "active"}`}>
               <ul>
                 <li>
-                  <a href="#">
+                  <a href="/profile">
                     <i className="ph-bold ph-user"></i>Profile
                   </a>
                 </li>
                 <li>
-                  <a href="#">
-                    <i className="ph-bold ph-gear-six"></i>Settings
-                  </a>
-                </li>
-                <li>
-                  <a href="#">
+                  <a href="/contact">
                     <i className="ph-bold ph-question"></i>Help
                   </a>
                 </li>

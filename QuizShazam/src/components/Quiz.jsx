@@ -4,14 +4,12 @@ import "../css/quiz.css";
 import { message } from "antd";
 import axios from "axios";
 import Loader from "../shared/Loader";
+import useAPI from "../Hooks/useAPI";
 const Quiz = () => {
   const { id } = useParams();
-  const [quizData, setquizData] = useState();
   const [messageApi, contextHolder] = message.useMessage();
   const navigate = useNavigate();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [answers, setAnswers] = useState([]);
   // initialize answers state as an empty array
   const [selectedOptions, setSelectedOptions] = useState({}); // Initialize an empty object to store selected options
@@ -93,26 +91,29 @@ const Quiz = () => {
     }
   };
 
-  useEffect(() => {
-    const getData = async () => {
-      try {
-        const res = await axios.get(
-          `http://localhost:3000/users/quiz/${id}/questions`
-        );
-        setquizData(res.data);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching quiz data:", error);
-        setError("Quiz not found");
-        setLoading(false);
-      }
-    };
-    getData();
-  }, [id]);
-
-  if (loading) {
+  // useEffect(() => {
+  //   const getData = async () => {
+  //     try {
+  //       const res = await axios.get(
+  //         `http://localhost:3000/users/quiz/${id}/questions`
+  //       );
+  //       setquizData(res.data);
+  //       setLoading(false);
+  //     } catch (error) {
+  //       console.error("Error fetching quiz data:", error);
+  //       setError("Quiz not found");
+  //       setLoading(false);
+  //     }
+  //   };
+  //   getData();
+  // }, [id]);
+  const [quizData, error, loading] = useAPI(
+    `http://localhost:3000/users/quiz/${id}/questions`
+  );
+  if (!quizData) {
     return <Loader />;
   }
+  const { questionText, _id, options } = quizData[currentQuestionIndex];
 
   if (error) {
     return <h1>{error}</h1>;
@@ -122,8 +123,7 @@ const Quiz = () => {
     return <h1>No quiz data available</h1>;
   }
 
-  const { questionText, _id, options } = quizData[currentQuestionIndex];
-
+  console.log("🚀 ~ Quiz ~ quizData:", quizData);
   return (
     <>
       {contextHolder}
@@ -168,6 +168,7 @@ const Quiz = () => {
       ) : (
         <h1>not found</h1>
       )}
+      hello
     </>
   );
 };
