@@ -27,7 +27,6 @@ const Login = () => {
     const provider = new GoogleAuthProvider();
     try {
       const { user } = await signInWithPopup(auth, provider);
-      console.log("🚀 ~ SignInWithGoogle ~ user:", user);
       const res = await axios.post("http://localhost:3000/users/login/google", {
         email: user.email,
         username: user.displayName,
@@ -35,7 +34,7 @@ const Login = () => {
       });
       Cookies.set("user", JSON.stringify(res.data), { expires: 1 / 24 });
 
-      Navigate("/dashboard");
+      window.location.href = "/dashboard"
     } catch (error) {
       console.log(error);
     }
