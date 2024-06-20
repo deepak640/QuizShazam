@@ -12,7 +12,10 @@ const Login = () => {
 
   const formSubmit = async (values) => {
     try {
-      const res = await axios.post(`${VITE_REACT_API_URL}/users/login`, values);
+      const res = await axios.post(
+        `https://quizshazam-1.onrender.com/users/login`,
+        values
+      );
       Cookies.set("user", JSON.stringify(res.data), { expires: 1 });
     } catch (error) {
       messageApi.open({
