@@ -5,6 +5,7 @@ import "../css/login.css";
 import axios from "axios";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from "../auth/Firebase";
+import Cookies from "js-cookie";
 import { message } from "antd";
 const Login = () => {
   const [messageApi, contextHolder] = message.useMessage();
@@ -13,7 +14,7 @@ const Login = () => {
   const formSubmit = async (values) => {
     try {
       const res = await axios.post("http://localhost:3000/users/login", values);
-      localStorage.setItem("user", JSON.stringify(res.data));
+      Cookies.set("user", JSON.stringify(res.data), { expires: 1 });
     } catch (error) {
       messageApi.open({
         type: "error",
@@ -32,13 +33,14 @@ const Login = () => {
         username: user.displayName,
         photoURL: user.photoURL,
       });
-      localStorage.setItem("user", JSON.stringify(res.data));
+      Cookies.set("user", JSON.stringify(res.data), { expires: 1 });
+
       Navigate("/dashboard");
     } catch (error) {
       console.log(error);
     }
   };
-  
+
   const { handleChange, values, handleSubmit } = useFormik({
     initialValues: {
       email: "",
