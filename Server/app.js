@@ -27,7 +27,7 @@ const options = {
 };
 
 mongoose
-  .connect("mongodb://localhost:27017/Quiz", options)
+  .connect(process.env.MONGO_URI, options)
   .then(() => {
     console.log("Successfully connected to MongoDB");
   })
