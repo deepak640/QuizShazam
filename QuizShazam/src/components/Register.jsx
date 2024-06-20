@@ -5,6 +5,7 @@ import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "../auth/Firebase";
 import { useFormik } from "formik";
 import { message } from "antd";
+import Cookies from "js-cookie";
 const Register = () => {
   const [messageApi, contextHolder] = message.useMessage();
 
@@ -16,7 +17,7 @@ const Register = () => {
         "http://localhost:3000/users/register",
         values
       );
-      localStorage.setItem("user", JSON.stringify(res.data));
+      Cookies.set("user", JSON.stringify(res.data), { expires: 1 / 24 });
       Navigate("/dashboard");
     } catch (error) {
       messageApi.open({
@@ -35,13 +36,13 @@ const Register = () => {
         email: user.email,
         photoURL: user.photoURL,
       });
-      localStorage.setItem("user", JSON.stringify(res.data));
+      Cookies.set("user", JSON.stringify(res.data), { expires: 1 / 24 });
       Navigate("/dashboard");
     } catch (error) {
       console.log(error);
     }
   };
-  
+
   const { handleChange, values, handleSubmit } = useFormik({
     initialValues: {
       username: "",

@@ -5,6 +5,7 @@ import { message } from "antd";
 import axios from "axios";
 import Loader from "../shared/Loader";
 import useAPI from "../Hooks/useAPI";
+import Cookies from "js-cookie"
 const Quiz = () => {
   const { id } = useParams();
   const [messageApi, contextHolder] = message.useMessage();
@@ -58,7 +59,7 @@ const Quiz = () => {
     console.log(answers);
     if (answers.length === quizData.length) {
       try {
-        const { token } = JSON.parse(localStorage.getItem("user"));
+        const { token } = JSON.parse(Cookies.get("user"));
         const res = await axios.post(
           "http://localhost:3000/users/submit-quiz",
           {

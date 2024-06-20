@@ -33,7 +33,7 @@ const Login = () => {
         username: user.displayName,
         photoURL: user.photoURL,
       });
-      Cookies.set("user", JSON.stringify(res.data), { expires: 1 });
+      Cookies.set("user", JSON.stringify(res.data), { expires: 1 / 24 });
 
       Navigate("/dashboard");
     } catch (error) {
