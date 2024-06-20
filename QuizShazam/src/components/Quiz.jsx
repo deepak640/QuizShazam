@@ -93,9 +93,7 @@ const Quiz = () => {
     }
   };
 
-  const [quizData, error, loading] = useAPI(
-    `http://localhost:3000/users/quiz/${id}/questions`
-  );
+  const [quizData, error, loading] = useAPI(`users/quiz/${id}/questions`);
   if (!quizData) {
     return <Loader />;
   }

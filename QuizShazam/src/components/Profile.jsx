@@ -8,10 +8,7 @@ import withAuth from "../auth/withAuth";
 const Profile = () => {
   const { token } = JSON.parse(Cookies.get("user"));
   const Navigate = useNavigate();
-  const [data, error, loading] = useAPI(
-    "http://localhost:3000/users/profile",
-    token
-  );
+  const [data, error, loading] = useAPI("users/profile", token);
   if (!data) return <Loader />;
   const { quizzes, profile } = data;
   return (

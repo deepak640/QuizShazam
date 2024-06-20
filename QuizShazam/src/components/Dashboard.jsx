@@ -2,10 +2,10 @@ import { IoArrowForward } from "react-icons/io5";
 import { Link } from "react-router-dom";
 import "../css/quiz.css";
 import useAPI from "../Hooks/useAPI";
-import withAuth from "../auth/withAuth"
+import withAuth from "../auth/withAuth";
 import Loader from "../shared/Loader";
 const Dashboard = () => {
-  const [quizzes, error, loading] = useAPI("http://localhost:3000/quizzes");
+  const [quizzes, error, loading] = useAPI("quizzes");
   if (loading) return <Loader />;
   if (error) return <Loader />;
   return (

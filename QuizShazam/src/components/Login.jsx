@@ -1,6 +1,5 @@
-import React, { useState } from "react";
 import { useFormik } from "formik";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import "../css/login.css";
 import axios from "axios";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
@@ -8,12 +7,12 @@ import { auth } from "../auth/Firebase";
 import Cookies from "js-cookie";
 import { message } from "antd";
 const Login = () => {
+  const { VITE_REACT_API_URL } = import.meta.env;
   const [messageApi, contextHolder] = message.useMessage();
-  const Navigate = useNavigate();
 
   const formSubmit = async (values) => {
     try {
-      const res = await axios.post("http://localhost:3000/users/login", values);
+      const res = await axios.post(`${VITE_REACT_API_URL}/users/login`, values);
       Cookies.set("user", JSON.stringify(res.data), { expires: 1 });
     } catch (error) {
       messageApi.open({
@@ -27,14 +26,14 @@ const Login = () => {
     const provider = new GoogleAuthProvider();
     try {
       const { user } = await signInWithPopup(auth, provider);
-      const res = await axios.post("http://localhost:3000/users/login/google", {
+      const res = await axios.post(`${VITE_REACT_API_URL}/users/login/google`, {
         email: user.email,
         username: user.displayName,
         photoURL: user.photoURL,
       });
       Cookies.set("user", JSON.stringify(res.data), { expires: 1 / 24 });
 
-      window.location.href = "/dashboard"
+      window.location.href = "/dashboard";
     } catch (error) {
       console.log(error);
     }
