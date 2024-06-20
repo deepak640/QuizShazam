@@ -1,10 +1,13 @@
 import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Loader from "../shared/Loader";
 import "../css/profile.css";
 import useAPI from "../Hooks/useAPI";
 import Cookies from "js-cookie";
+import withAuth from "../auth/withAuth";
 const Profile = () => {
   const { token } = JSON.parse(Cookies.get("user"));
+  const Navigate = useNavigate();
   const [data, error, loading] = useAPI(
     "http://localhost:3000/users/profile",
     token
@@ -32,7 +35,11 @@ const Profile = () => {
         {quizzes &&
           quizzes.map((data, i) => {
             return (
-              <div className="user-cards" key={i}>
+              <div
+                className="user-cards"
+                key={i}
+                onClick={() => Navigate(`quiz/${data._id}`)}
+              >
                 <h4>{data.title}</h4>
                 <p>{data.description}</p>
                 <p>timetaken : 15minutes</p>
@@ -53,4 +60,4 @@ const Profile = () => {
   );
 };
 
-export default Profile;
+export default withAuth(Profile);

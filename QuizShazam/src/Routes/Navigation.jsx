@@ -9,12 +9,12 @@ import Dashboard from "../components/Dashboard";
 import Quiz from "../components/Quiz";
 import NotFound from "../components/NotFound";
 import Profile from "../components/Profile";
+import Result from "../components/Result";
 const Navigation = () => {
-  const HeaderPaths = ["/", "/dashboard","/profile"];
   return (
     <>
       <BrowserRouter>
-        <Container access={HeaderPaths}>
+        <Container>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/negi" element={<Protected />} />
@@ -22,7 +22,10 @@ const Navigation = () => {
             <Route path="/register" element={<Register />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/quiz/:id" element={<Quiz />} />
-            <Route path="/profile" element={<Profile />} />
+            <Route path="/profile">
+              <Route index element={<Profile />} />
+              <Route path="quiz/:id" element={<Result />} />
+            </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Container>

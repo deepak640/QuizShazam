@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "../css/quiz.css";
 import { message } from "antd";
 import axios from "axios";
 import Loader from "../shared/Loader";
 import useAPI from "../Hooks/useAPI";
-import Cookies from "js-cookie"
+import Cookies from "js-cookie";
+import withAuth from "../auth/withAuth";
 const Quiz = () => {
   const { id } = useParams();
   const [messageApi, contextHolder] = message.useMessage();
@@ -158,4 +159,4 @@ const Quiz = () => {
   );
 };
 
-export default Quiz;
+export default withAuth(Quiz);

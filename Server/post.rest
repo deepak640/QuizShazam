@@ -84,5 +84,10 @@ GET http://localhost:3000/quizzes
 GET http://localhost:3000/users/quiz/6658b234072322c9a514986/questions
 ###
 
+GET http://localhost:3000/users/results
+Authorization: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2NmZkMGRjNzAwNTM4Y2UwMmFkOWQ4ZCIsImlhdCI6MTcxODg2MTk5NiwiZXhwIjoxNzE4ODY1NTk2fQ.ej8GBTVebJTGtEnpNwgc8WK5_OCS2CFtkew-8GqVxg0
+###
+
 GET http://localhost:3000/users/profile
 Authorization: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2NmZkMGRjNzAwNTM4Y2UwMmFkOWQ4ZCIsImlhdCI6MTcxODc3NjMzMywiZXhwIjoxNzE4Nzc5OTMzfQ.kqa4C2mDC_GBwPpELx6JiPDbE-XRK93RUlIdsvg0vQg
+###

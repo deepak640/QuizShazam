@@ -1,9 +1,21 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { SlBadge } from "react-icons/sl";
+import { message } from "antd";
 const Home = () => {
+  const { state } = useLocation();
+  const [messageApi, contextHolder] = message.useMessage();
+  useEffect(() => {
+    state &&
+      messageApi.open({
+        type: "warning",
+        content: "You are not logged in",
+      });
+  }, []);
+
   return (
     <>
+      {contextHolder}
       <div className="hero-section">
         <h1>
           "Test Your Knowledge, Track Your Progress, and Become a Quiz Master"
