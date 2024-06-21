@@ -8,7 +8,7 @@ import useAPI from "../Hooks/useAPI";
 import Cookies from "js-cookie";
 import withAuth from "../auth/withAuth";
 const Quiz = () => {
-  const {VITE_REACT_API_URL} = import.meta.env
+  const { VITE_REACT_API_URL } = import.meta.env;
   const { id } = useParams();
   const [messageApi, contextHolder] = message.useMessage();
   const navigate = useNavigate();
@@ -124,9 +124,8 @@ const Quiz = () => {
               {options.map((option, index) => (
                 <div
                   key={index}
-                  className={`option ${
-                    selectedOptions[_id] === index ? "selected" : ""
-                  }`}
+                  className="option"
+                  id={`${selectedOptions[_id] === index ? "selected" : ""}`}
                   onClick={() =>
                     handleOptionClick(quizData[currentQuestionIndex]._id, index)
                   }

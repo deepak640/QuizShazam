@@ -11,7 +11,6 @@ const Header = () => {
   const userData = Cookies.get("user");
 
   useEffect(() => {
-    console.log(import.meta.env);
     if (userData) {
       setUser(JSON.parse(userData));
       setIsLoggedIn(true);
