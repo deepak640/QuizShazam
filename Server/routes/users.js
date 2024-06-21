@@ -37,7 +37,7 @@ router.post("/register", async (req, res) => {
     });
     res.status(200).json({ token, photoURL: password ? "" : photoURL });
   } catch (error) {
-    console.log("🚀 ~ router.post ~ error:", error);
+    // console.log("🚀 ~ router.post ~ error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -177,7 +177,7 @@ router.post("/submit-quiz", Authentication, async (req, res) => {
     });
     res.status(201).send({ message: "Quiz submitted successfully", score });
   } catch (error) {
-    console.log("🚀 ~ router.post ~ error:", error);
+    // console.log("🚀 ~ router.post ~ error:", error);
     res.status(500).send({ message: "Error submitting quiz", error });
   }
 });

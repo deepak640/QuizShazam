@@ -2,9 +2,11 @@ import React, { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { SlBadge } from "react-icons/sl";
 import { message } from "antd";
+import useAPI from "../Hooks/useAPI"
 const Home = () => {
   const { state } = useLocation();
   const [messageApi, contextHolder] = message.useMessage();
+  useAPI("/")
   useEffect(() => {
     state &&
       messageApi.open({

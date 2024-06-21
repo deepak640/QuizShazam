@@ -5,7 +5,7 @@ import useAPI from "../Hooks/useAPI";
 import withAuth from "../auth/withAuth";
 import Loader from "../shared/Loader";
 const Dashboard = () => {
-  const [quizzes, error, loading] = useAPI("quizzes");
+  const [quizzes, error, loading] = useAPI("/quizzes");
   if (loading) return <Loader />;
   if (error) return <Loader />;
   return (

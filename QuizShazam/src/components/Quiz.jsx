@@ -58,7 +58,7 @@ const Quiz = () => {
   };
 
   const handleSubmitClick = async () => {
-    console.log(answers);
+    // console.log(answers);
     if (answers.length === quizData.length) {
       try {
         const { token } = JSON.parse(Cookies.get("user"));
@@ -94,7 +94,7 @@ const Quiz = () => {
     }
   };
 
-  const [quizData, error, loading] = useAPI(`users/quiz/${id}/questions`);
+  const [quizData, error, loading] = useAPI(`/users/quiz/${id}/questions`);
   if (!quizData) {
     return <Loader />;
   }
@@ -108,7 +108,6 @@ const Quiz = () => {
     return <h1>No quiz data available</h1>;
   }
 
-  console.log("🚀 ~ Quiz ~ quizData:", quizData);
   return (
     <>
       {contextHolder}

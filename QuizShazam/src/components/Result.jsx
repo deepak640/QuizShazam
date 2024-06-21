@@ -26,10 +26,10 @@ const Result = () => {
     },
   ];
   const { token } = JSON.parse(Cookies.get("user"));
-  const [data, error, loading] = useAPI(`users/results/${id}`, token);
+  const [data, error, loading] = useAPI(`/users/results/${id}`, token);
   if (!data) return <Loader/>
   const { answers, quiz, score } = data;
-  console.log("🚀 ~ Result ~ answers:", answers)
+  // console.log("🚀 ~ Result ~ answers:", answers)
   return (
     <div className="quiz-results">
       <h1>{quiz.title}</h1>

@@ -5,7 +5,6 @@ const Question = require("../model/question");
 /* GET home page. */
 router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });
-  console.log(process.env.JWT);
 });
 
 router.post("/create-quiz", async (req, res) => {

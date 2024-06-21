@@ -13,7 +13,7 @@ const Authentication = (req, res, next) => {
 
     // Attach the user ID (converted back to ObjectId) to the request object
     req.user = { id: new mongoose.Types.ObjectId(user.id) };
-    console.log("🚀 ~ jwt.verify ~ user:", req.user)
+    // console.log("🚀 ~ jwt.verify ~ user:", req.user)
     next();
   });
 };
