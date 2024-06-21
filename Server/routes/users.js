@@ -115,12 +115,13 @@ router.get("/protected", Authentication, async (req, res) => {
 });
 
 // Get user's quiz results
-router.get("/results", Authentication, async (req, res) => {
+router.get("/results/:id", Authentication, async (req, res) => {
   const userId = req.user.id;
+  const { id } = req.params;
   try {
-    const results = await Response.find({ user: userId })
-      .populate("quiz", "title")
-      .populate("answers.questionId");
+    const results = await Response.findOne({ user: userId, quiz: id })
+    .populate("quiz", "title")
+    .populate("answers.questionId");
     res.status(200).send(results);
   } catch (error) {
     res.status(500).send({ message: "Error retrieving results", error });
