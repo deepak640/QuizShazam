@@ -14,10 +14,7 @@ const useAPI = (pathURL, token = null) => {
             Authorization: `Bearer ${token}`,
           },
         };
-        const res = await axios.get(
-          `https://quizshazam-1.onrender.com/${pathURL}`,
-          config
-        );
+        const res = await axios.get(`${VITE_REACT_API_URL}/${pathURL}`, config);
         setData(res.data);
         setLoading(false);
       } catch (error) {

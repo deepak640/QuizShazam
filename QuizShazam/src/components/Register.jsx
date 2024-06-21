@@ -12,7 +12,7 @@ const Register = () => {
   const formSubmit = async (values) => {
     try {
       const res = await axios.post(
-        `https://quizshazam-1.onrender.com/users/register`,
+        `${VITE_REACT_API_URL}/users/register`,
         values
       );
       Cookies.set("user", JSON.stringify(res.data), { expires: 1 / 24 });
@@ -29,14 +29,11 @@ const Register = () => {
     const provider = new GoogleAuthProvider();
     try {
       const { user } = await signInWithPopup(auth, provider);
-      const res = await axios.post(
-        `https://quizshazam-1.onrender.com/users/register`,
-        {
-          username: user.displayName,
-          email: user.email,
-          photoURL: user.photoURL,
-        }
-      );
+      const res = await axios.post(`${VITE_REACT_API_URL}/users/register`, {
+        username: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL,
+      });
       Cookies.set("user", JSON.stringify(res.data), { expires: 1 / 24 });
       window.location.href = "/dashboard";
     } catch (error) {

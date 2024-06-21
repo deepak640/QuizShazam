@@ -8,6 +8,7 @@ import useAPI from "../Hooks/useAPI";
 import Cookies from "js-cookie";
 import withAuth from "../auth/withAuth";
 const Quiz = () => {
+  const {VITE_REACT_API_URL} = import.meta.env
   const { id } = useParams();
   const [messageApi, contextHolder] = message.useMessage();
   const navigate = useNavigate();
@@ -62,7 +63,7 @@ const Quiz = () => {
       try {
         const { token } = JSON.parse(Cookies.get("user"));
         const res = await axios.post(
-          "http://localhost:3000/users/submit-quiz",
+          `${VITE_REACT_API_URL}/users/submit-quiz`,
           {
             quizId: id,
             answers,
