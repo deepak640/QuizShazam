@@ -6,6 +6,7 @@ import Register from "../components/Register";
 import { Container, Dashboard, Home, Profile, Quiz, Result } from "../Exports";
 import NotFound from "../components/NotFound";
 import Loader from "../shared/Loader";
+import UploadQuiz from "../components/Upload";
 const Navigation = () => {
   return (
     <>
@@ -17,10 +18,13 @@ const Navigation = () => {
               <Route path="/negi" element={<Protected />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/dashboard/quiz/:id" element={<Quiz />} />
+              <Route path="/upload" element={<UploadQuiz />} />
+              <Route path="/dashboard">
+                <Route index element={<Dashboard />} />
+                <Route path="quiz/:id" element={<Quiz />} />
+              </Route>
               <Route path="/profile">
-                <Route index element={<Profile />} /> 
+                <Route index element={<Profile />} />
                 <Route path="quiz/:id" element={<Result />} />
               </Route>
               <Route path="*" element={<NotFound />} />
