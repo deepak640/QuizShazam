@@ -2,14 +2,16 @@ import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Loader from "../shared/Loader";
 import "../css/profile.css";
-import useAPI from "../Hooks/useAPI";
 import Cookies from "js-cookie";
 import withAuth from "../auth/withAuth";
+import { useQuery } from "react-query";
+import { getProfile } from "../func/apiCalls";
 const Profile = () => {
   const { token } = JSON.parse(Cookies.get("user"));
   const Navigate = useNavigate();
-  const [data, error, loading] = useAPI("/users/profile", token);
-  if (!data) return <Loader />;
+  const { data, isLoading } = useQuery(["profile", { token }], getProfile);
+  console.log("🚀 ~ Profile ~ data:", data)
+  if (isLoading) return <Loader />;
   const { quizzes, profile } = data;
   return (
     <div className="profile-section">

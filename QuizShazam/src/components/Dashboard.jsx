@@ -1,13 +1,15 @@
 import { IoArrowForward } from "react-icons/io5";
 import { Link } from "react-router-dom";
 import "../css/quiz.css";
-import useAPI from "../Hooks/useAPI";
 import withAuth from "../auth/withAuth";
 import Loader from "../shared/Loader";
+import { useQuery } from "react-query";
+import { getQuizzes } from "../func/apiCalls";
 const Dashboard = () => {
-  const [quizzes, error, loading] = useAPI("/quizzes");
-  if (loading) return <Loader />;
-  if (error) return <Loader />;
+  const { data: quizzes, isLoading } = useQuery("quizzes", getQuizzes);
+  // console.log("🚀 ~ Dashboard ~ quizzes:", quizzes);
+  if (isLoading) return <Loader />;
+  if (quizzes.length == 0) return <h1 style={{textAlign:'center'}}>no data</h1>;
   return (
     <div>
       <div className="quiz-cards">

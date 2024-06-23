@@ -185,6 +185,7 @@ router.post("/submit-quiz", Authentication, async (req, res) => {
 router.get("/profile", Authentication, async (req, res) => {
   const userID = req.user.id;
   const profile = await UserModel.findById(userID);
+  console.log("🚀 ~ router.get ~ profile:", profile)
   let quizzes = [];
   for (let quiz of profile.quizzesTaken) {
     let info = await Quiz.findById(quiz._id);

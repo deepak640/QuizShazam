@@ -4,9 +4,10 @@ import "../css/quiz.css";
 import { message } from "antd";
 import axios from "axios";
 import Loader from "../shared/Loader";
-import useAPI from "../Hooks/useAPI";
 import Cookies from "js-cookie";
+import { useQuery } from "react-query";
 import withAuth from "../auth/withAuth";
+import { getQuestions } from "../func/apiCalls";
 const Quiz = () => {
   const { VITE_REACT_API_URL } = import.meta.env;
   const { id } = useParams();
@@ -94,20 +95,16 @@ const Quiz = () => {
     }
   };
 
-  const [quizData, error, loading] = useAPI(`/users/quiz/${id}/questions`);
-  if (!quizData) {
-    return <Loader />;
-  }
+  const { data: quizData, isLoading } = useQuery(
+    ["questions", { id }],
+    getQuestions
+  );
+  if (isLoading) return <Loader />;
   const { questionText, _id, options } = quizData[currentQuestionIndex];
 
-  if (error) {
-    return <h1>{error}</h1>;
-  }
+  if (!quizData.length) return <h1>No quiz data available</h1>;
 
-  if (!quizData.length) {
-    return <h1>No quiz data available</h1>;
-  }
-
+  // console.log("🚀 ~ Quiz ~ quizData:", quizData);
   return (
     <>
       {contextHolder}
