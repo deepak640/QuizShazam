@@ -36,7 +36,12 @@ const Login = () => {
       }
     );
   };
-
+  if (isLoading) {
+    messageApi.open({
+      content: "loading",
+      type: "loading",
+    });
+  }
   const SignInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     try {

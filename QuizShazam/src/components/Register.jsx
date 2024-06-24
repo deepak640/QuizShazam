@@ -70,7 +70,12 @@ const Register = () => {
       formSubmit(values);
     },
   });
-
+  if (isLoading) {
+    messageApi.open({
+      content: "loading",
+      type: "loading",
+    });
+  }
   return (
     <div className="Login-container">
       {contextHolder}
