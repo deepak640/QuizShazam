@@ -2,14 +2,19 @@ import React, { useState } from "react";
 import * as XLSX from "xlsx";
 import axios from "axios";
 import "../css/Upload.css";
+import { useMutation } from "react-query";
+import { uploadData } from "../func/apiCalls";
 
 const UploadQuiz = () => {
   const [file, setFile] = useState(null);
   const [jsonData, setJsonData] = useState(null);
   const [error, setError] = useState(null);
   const [uploaded, setUploaded] = useState(false);
-  const { VITE_REACT_API_URL } = import.meta.env;
 
+  const { mutate, isLoading } = useMutation(async (values) => {
+    // return await uploadData(values);
+    return values;
+  });
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (
@@ -34,26 +39,53 @@ const UploadQuiz = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const workbook = XLSX.read(event.target.result, { type: "array" });
-      const sheet = workbook.Sheets["Sheet1"];
+      const sheet = workbook.Sheets["Multi option"];
       const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      console.log("🚀 ~ handleUpload ~ jsonData:", jsonData)
 
-      const questions = jsonData.slice(1).map((row, index) => ({
-        questionText: row[0],
-        options: row.slice(1, -1).map((option, i) => ({
+      // Create an object to store subjects with their questions
+      const subjects = {};
+
+      // Skip the header row and process each row
+      jsonData.slice(1).forEach((row) => {
+        const subject = row[0];
+        const questionText = row[1];
+        const options = row.slice(2, 6);
+        const correctOptionIndex = row[6] - 1; // Convert to 0-based index
+
+        // Map options to an array of objects with text and isCorrect fields
+        const mappedOptions = options.map((option, i) => ({
           text: option,
-          isCorrect: i === row[5] - 1,
-        })),
-      }));
+          isCorrect: i === correctOptionIndex,
+        }));
 
-      const finalJson = {
-        title: "General Knowledge Quiz",
-        description: "Test your general knowledge with this fun quiz!",
-        questions,
+        // Check if the subject already exists in the object
+        if (!subjects[subject]) {
+          subjects[subject] = [];
+        }
+
+        // Add the question to the subject's array
+        subjects[subject].push({
+          questionText,
+          options: mappedOptions,
+        });
+      });
+
+      // Create an array to store the final JSON objects for each subject
+      const finalJsonArray = Object.keys(subjects).map((subject) => ({
+        title: `${subject} Quiz`,
+        description: `Test your knowledge on ${subject} with this fun quiz!`,
+        questions: subjects[subject],
         authorId: "lkasjkdhajkshd",
-      };
-      setJsonData(finalJson);
+      }));
+      console.log("🚀 ~ finalJsonArray ~ finalJsonArray:", finalJsonArray)
+
+
+      setJsonData(finalJsonArray);
       setUploaded(true);
     };
+
+
     reader.readAsArrayBuffer(file);
   };
 
@@ -62,11 +94,11 @@ const UploadQuiz = () => {
       setError("Please upload a file first");
       return;
     }
-    try {
-      await axios.post(`${VITE_REACT_API_URL}/create-quiz`, jsonData);
-    } catch (error) {
-      console.log(error);
-    }
+    // mutate(jsonData, {
+    //   onSuccess: (data) => {
+    //     console.log(data);
+    //   },
+    // });
   };
 
   return (

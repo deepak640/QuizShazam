@@ -1,19 +1,13 @@
 import axios from "axios";
+const { VITE_REACT_API_URL } = import.meta.env;
 
 export const getQuizzes = async () => {
-  const { VITE_REACT_API_URL } = import.meta.env;
-  const config = {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  };
-  const res = await axios.get(`${VITE_REACT_API_URL}/quizzes`, config);
+  const res = await axios.get(`${VITE_REACT_API_URL}/quizzes`);
   return res.data;
 };
 
 export const getQuestions = async ({ queryKey }) => {
   const [key, { id }] = queryKey;
-  const { VITE_REACT_API_URL } = import.meta.env;
   const res = await axios.get(
     `${VITE_REACT_API_URL}/users/quiz/${id}/questions`
   );
@@ -22,7 +16,6 @@ export const getQuestions = async ({ queryKey }) => {
 
 export const getResult = async ({ queryKey }) => {
   const [key, { id, token }] = queryKey;
-  const { VITE_REACT_API_URL } = import.meta.env;
   const config = {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -37,12 +30,43 @@ export const getResult = async ({ queryKey }) => {
 
 export const getProfile = async ({ queryKey }) => {
   const [key, { token }] = queryKey;
-  const { VITE_REACT_API_URL } = import.meta.env;
   const config = {
     headers: {
       Authorization: `Bearer ${token}`,
     },
   };
   const res = await axios.get(`${VITE_REACT_API_URL}/users/profile`, config);
+  return res.data;
+};
+
+export const uploadData = async (values) => {
+  const res = await axios.post(`${VITE_REACT_API_URL}/create-quiz`, values);
+  return values;
+};
+
+export const googleLogin = async (values) => {
+  const res = await axios.post(
+    `${VITE_REACT_API_URL}/users/login/google`,
+    values
+  );
+  return res.data;
+};
+
+export const userLogin = async (values) => {
+  const res = await axios.post(`${VITE_REACT_API_URL}/users/login`, values);
+  return res.data;
+};
+
+export const userRegister = async (values) => {
+  const res = await axios.post(`${VITE_REACT_API_URL}/users/register`, values);
+  return res.data;
+};
+
+export const submitQuiz = async ({ values, config }) => {
+  const res = await axios.post(
+    `${VITE_REACT_API_URL}/users/submit-quiz`,
+    values,
+    config
+  );
   return res.data;
 };

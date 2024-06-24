@@ -5,9 +5,9 @@ import { message } from "antd";
 import axios from "axios";
 import Loader from "../shared/Loader";
 import Cookies from "js-cookie";
-import { useQuery } from "react-query";
+import { useMutation, useQuery } from "react-query";
 import withAuth from "../auth/withAuth";
-import { getQuestions } from "../func/apiCalls";
+import { getQuestions, submitQuiz } from "../func/apiCalls";
 const Quiz = () => {
   const { VITE_REACT_API_URL } = import.meta.env;
   const { id } = useParams();
@@ -17,7 +17,11 @@ const Quiz = () => {
   const [answers, setAnswers] = useState([]);
   // initialize answers state as an empty array
   const [selectedOptions, setSelectedOptions] = useState({}); // Initialize an empty object to store selected options
-
+  const { mutate, isLoading: ispending } = useMutation(
+    async ({ values, config }) => {
+      return submitQuiz({values, config});
+    }
+  );
   const handleOptionClick = (questionId, optionIndex) => {
     setSelectedOptions((prevOptions) => ({
       ...prevOptions,
@@ -63,24 +67,28 @@ const Quiz = () => {
     if (answers.length === quizData.length) {
       try {
         const { token } = JSON.parse(Cookies.get("user"));
-        const res = await axios.post(
-          `${VITE_REACT_API_URL}/users/submit-quiz`,
-          {
-            quizId: id,
-            answers,
+        const values = {
+          quizId: id,
+          answers,
+        };
+        const config = {
+          headers: {
+            Authorization: `Bearer ${token}`,
           },
+        };
+        mutate(
+          { values, config },
           {
-            headers: {
-              Authorization: `Bearer ${token}`,
+            onSuccess: (data) => {
+              messageApi.open({
+                type: "success",
+                content: "submitted",
+                duration: 2.5,
+                onClose: () => navigate("/"),
+              });
             },
           }
         );
-        messageApi.open({
-          type: "success",
-          content: "This is a success message",
-          duration: 2.5,
-          onClose: () => navigate("/"),
-        });
       } catch (error) {
         messageApi.open({
           type: "error",
@@ -140,7 +148,9 @@ const Quiz = () => {
               {currentQuestionIndex < quizData.length - 1 ? (
                 <button onClick={handleNextClick}>Next</button>
               ) : (
-                <button onClick={handleSubmitClick}>Submit</button>
+                <button onClick={handleSubmitClick} disabled={ispending}>
+                  {ispending ? "loading ... " : "Submit"}
+                </button>
               )}
             </div>
           </div>

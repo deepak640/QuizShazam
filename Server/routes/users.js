@@ -37,7 +37,7 @@ router.post("/register", async (req, res) => {
     });
     res.status(200).json({ token, photoURL: password ? "" : photoURL });
   } catch (error) {
-    // console.log("🚀 ~ router.post ~ error:", error);
+    console.log("🚀 ~ router.post ~ error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
