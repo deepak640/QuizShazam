@@ -1,7 +1,6 @@
 import { useFormik } from "formik";
 import { Link } from "react-router-dom";
 import "../css/login.css";
-import axios from "axios";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from "../auth/Firebase";
 import Cookies from "js-cookie";
@@ -9,22 +8,26 @@ import { useMutation } from "react-query";
 import { message } from "antd";
 import Googlebutton from "../shared/Googlebutton";
 import { googleLogin, userLogin } from "../func/apiCalls";
+import { useState } from "react";
 const Login = () => {
-  const { VITE_REACT_API_URL } = import.meta.env;
   const [messageApi, contextHolder] = message.useMessage();
-
-  const { mutate, isLoading } = useMutation(async ({ values, method }) => {
-    return method === "google"
-      ? await googleLogin(values)
-      : await userLogin(values);
-  });
+  const [isremember, setRemember] = useState(false);
+  const { mutate, isLoading, error } = useMutation(
+    async ({ values, method }) => {
+      return method === "google"
+        ? await googleLogin(values)
+        : await userLogin(values);
+    }
+  );
 
   const formSubmit = async (values) => {
     mutate(
       { values, method: "login" },
       {
         onSuccess: (data) => {
-          Cookies.set("user", JSON.stringify(data), { expires: 1 });
+          Cookies.set("user", JSON.stringify(data), {
+            expires: isremember ? 30 : null,
+          });
           window.location.href = "/dashboard";
         },
         onError: (error) => {
@@ -55,7 +58,9 @@ const Login = () => {
         { values, method: "google" },
         {
           onSuccess: (data) => {
-            Cookies.set("user", JSON.stringify(data), { expires: 1 });
+            Cookies.set("user", JSON.stringify(data), {
+              expires: isremember ? 30 : null,
+            });
             window.location.href = "/dashboard";
           },
           onError: (error) => {
@@ -114,7 +119,13 @@ const Login = () => {
             />
           </div>
           <span>
-            <input type="checkbox" id="checkbox" name="checkAccount" />
+            <input
+              type="checkbox"
+              id="checkbox"
+              name="checkAccount"
+              checked={isremember}
+              onChange={(e) => setRemember(e.target.checked)}
+            />
             <label htmlFor="checkbox">Remember me</label>
           </span>
           <br />
