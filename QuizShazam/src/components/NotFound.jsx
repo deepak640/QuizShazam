@@ -1,14 +1,20 @@
 import React from "react";
 import "../css/NotFound.css";
+import Lottie from "lottie-react";
+import animatedata from "../assets/errorpage.json";
 import { useNavigate } from "react-router-dom";
 const NotFound = () => {
   const Navigate = useNavigate();
   return (
     <div className="content-center">
-      <h2 className="error">404</h2>
-      <p>PAGE NOT FOUND</p>
-      <p>It looks like nothing was found at this location.</p>
-      <button onClick={() => Navigate(-1)}>BACK TO HOME</button>
+      <Lottie className="errorpage" animationData={animatedata} />
+      <a
+        className="btn-grad"
+        style={{ cursor: "pointer" }}
+        onClick={() => Navigate(-1)}
+      >
+        BACK TO HOME
+      </a>
     </div>
   );
 };
