@@ -4,16 +4,17 @@ import axios from "axios";
 import "../css/Upload.css";
 import { useMutation } from "react-query";
 import { uploadData } from "../func/apiCalls";
+import { message } from "antd";
 
 const UploadQuiz = () => {
   const [file, setFile] = useState(null);
   const [jsonData, setJsonData] = useState(null);
   const [error, setError] = useState(null);
   const [uploaded, setUploaded] = useState(false);
+  const [messageApi, contextHolder] = message.useMessage();
 
   const { mutate, isLoading } = useMutation(async (values) => {
-    // return await uploadData(values);
-    return values;
+    return await uploadData(values);
   });
   const handleFileChange = (event) => {
     const file = event.target.files[0];
@@ -24,9 +25,9 @@ const UploadQuiz = () => {
         file.type === "application/vnd.ms-excel")
     ) {
       setFile(file);
-      setError(false);
+      setError(null);
     } else {
-      setError(true);
+      setError("File must be an Excel sheet");
     }
   };
 
@@ -34,17 +35,23 @@ const UploadQuiz = () => {
     if (!file) {
       setError("Please select a file");
       return;
-    }
+    } else setError(null);
 
     const reader = new FileReader();
     reader.onload = (event) => {
       const workbook = XLSX.read(event.target.result, { type: "array" });
-      const sheet = workbook.Sheets["Multi option"];
+      let sheetName = workbook.SheetNames[2];
+      const sheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-      console.log("🚀 ~ handleUpload ~ jsonData:", jsonData)
-
+      if (!jsonData.length) {
+        messageApi.open({
+          content: "Excel sheet is empty",
+          type: "error",
+        });
+        return;
+      }
       // Create an object to store subjects with their questions
-      const subjects = {};
+      let subjects = {};
 
       // Skip the header row and process each row
       jsonData.slice(1).forEach((row) => {
@@ -72,19 +79,21 @@ const UploadQuiz = () => {
       });
 
       // Create an array to store the final JSON objects for each subject
-      const finalJsonArray = Object.keys(subjects).map((subject) => ({
-        title: `${subject} Quiz`,
-        description: `Test your knowledge on ${subject} with this fun quiz!`,
-        questions: subjects[subject],
-        authorId: "lkasjkdhajkshd",
-      }));
-      console.log("🚀 ~ finalJsonArray ~ finalJsonArray:", finalJsonArray)
-
+      const finalJsonArray = Object.keys(subjects)
+        .filter((subject) => {
+          return subject !== "undefined";
+        })
+        .map((subject) => ({
+          title: `${subject} Quiz`,
+          description: `Test your knowledge on ${subject} with this fun quiz`,
+          questions: subjects[subject],
+          authorId: "lkasjkdhajkshd",
+        }));
+      console.log("🚀 ~ finalJsonArray ~ finalJsonArray:", finalJsonArray);
 
       setJsonData(finalJsonArray);
       setUploaded(true);
     };
-
 
     reader.readAsArrayBuffer(file);
   };
@@ -94,15 +103,29 @@ const UploadQuiz = () => {
       setError("Please upload a file first");
       return;
     }
-    // mutate(jsonData, {
-    //   onSuccess: (data) => {
-    //     console.log(data);
-    //   },
-    // });
+    mutate(jsonData, {
+      onSuccess: (data) => {
+        console.log("done");
+      },
+      onError: (error) => {
+        if (error.response.status === 413) {
+          messageApi.open({
+            content: error.response.statusText,
+            type: "error",
+          });
+        }
+      },
+    });
   };
-
+  if (error) {
+    messageApi.open({
+      content: error,
+      type: "warning",
+    });
+  }
   return (
     <div className="upload-container">
+      {contextHolder}
       <h1>Upload Quiz</h1>
       <p>
         Upload an Excel sheet to create a new quiz. The sheet should have the
@@ -112,26 +135,14 @@ const UploadQuiz = () => {
         <label htmlFor="excelFile">Excel File</label>
         <input type="file" id="excelFile" onChange={handleFileChange} />
       </div>
-      <button className="btn" onClick={handleUpload} disabled={!file}>
-        Upload
-      </button>
-      {uploaded && (
-        <div className="alert alert-success">
-          <i className="fas fa-check-circle"></i> Quiz uploaded successfully!
-          <p>
-            Your quiz has been uploaded and is now available for students to
-            take.
-          </p>
-          <button onClick={handlePost}>Post to API</button>
-        </div>
-      )}
-      {error && (
-        <div className="alert alert-danger">
-          <i className="fas fa-exclamation-triangle"></i> There was an error
-          uploading your quiz.
-          <p>Please check the format of your Excel sheet and try again.</p>
-        </div>
-      )}
+      <div style={{ display: "flex", width: "max-content", gap: "10px" }}>
+        <button className="btn" onClick={handleUpload} disabled={!file}>
+          Upload
+        </button>
+        <button className="btn" styl onClick={handlePost}>
+          {isLoading ? "loading..." : "post"}
+        </button>
+      </div>
     </div>
   );
 };

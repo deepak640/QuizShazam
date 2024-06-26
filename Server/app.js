@@ -16,10 +16,11 @@ app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "jade");
 app.use(cors());
 app.use(logger("dev"));
-app.use(bodyparser.json());
-app.use(bodyparser.urlencoded({ extended: true }));
+app.use(bodyparser.json({ limit: "50mb" }));
+app.use(bodyparser.urlencoded({ limit: "50mb", extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
+app.use(express.json({ limit: "50mb" }));
 const options = {
   useNewUrlParser: true,
   useUnifiedTopology: true,
