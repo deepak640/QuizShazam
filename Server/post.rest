@@ -79,6 +79,7 @@ Authorization: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2NTk2MTBkY
 ###~
 
 GET http://localhost:3000/quizzes
+Authorization: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2N2QxY2JmZjc0M2MyNDY1ZWY2ZWU1OSIsImlhdCI6MTcxOTQ3NTM5MSwiZXhwIjoxNzE5NDc4OTkxfQ.J0eiQ18ZV5oHsRUMhn3F3giJXeO7F-O6fughaeFpSc4
 ###
 
 GET http://localhost:3000/users/quiz/6658b234072322c9a514986/questions
