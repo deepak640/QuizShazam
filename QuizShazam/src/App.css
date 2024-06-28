@@ -1,3 +1,12 @@
 #selected{
   background-color:#8aa4e9;
 }
+
+#taken{
+  background-color: rgba(0, 0, 0, 0.155);
+}
+#lottie-center{
+  height: 56cap;
+  z-index: -1;
+  position: relative;
+}

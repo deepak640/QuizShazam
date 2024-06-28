@@ -1,8 +1,13 @@
 import axios from "axios";
 const { VITE_REACT_API_URL } = import.meta.env;
 
-export const getQuizzes = async () => {
-  const res = await axios.get(`${VITE_REACT_API_URL}/quizzes`);
+export const getQuizzes = async ({queryKey}) => {
+  const [key,{token}] = queryKey
+  const res = await axios.get(`${VITE_REACT_API_URL}/quizzes`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
   return res.data;
 };
 

@@ -1,4 +1,3 @@
-import axios from "axios";
 import { Link } from "react-router-dom";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "../auth/Firebase";

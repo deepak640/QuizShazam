@@ -2,14 +2,12 @@ import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "../css/quiz.css";
 import { message } from "antd";
-import axios from "axios";
 import Loader from "../shared/Loader";
 import Cookies from "js-cookie";
 import { useMutation, useQuery } from "react-query";
 import withAuth from "../auth/withAuth";
 import { getQuestions, submitQuiz } from "../func/apiCalls";
 const Quiz = () => {
-  const { VITE_REACT_API_URL } = import.meta.env;
   const { id } = useParams();
   const [messageApi, contextHolder] = message.useMessage();
   const navigate = useNavigate();
@@ -19,7 +17,7 @@ const Quiz = () => {
   const [selectedOptions, setSelectedOptions] = useState({}); // Initialize an empty object to store selected options
   const { mutate, isLoading: ispending } = useMutation(
     async ({ values, config }) => {
-      return submitQuiz({values, config});
+      return submitQuiz({ values, config });
     }
   );
   const handleOptionClick = (questionId, optionIndex) => {
@@ -80,10 +78,10 @@ const Quiz = () => {
           { values, config },
           {
             onSuccess: (data) => {
+              console.log("🚀 ~ handleSubmitClick ~ data:", data);
               messageApi.open({
                 type: "success",
                 content: "submitted",
-                duration: 2.5,
                 onClose: () => navigate("/"),
               });
             },
@@ -125,18 +123,25 @@ const Quiz = () => {
             <h2>Question {currentQuestionIndex + 1}</h2>
             <p className="question">{questionText}</p>
             <div className="options">
-              {options.map((option, index) => (
-                <div
-                  key={index}
-                  className="option"
-                  id={`${selectedOptions[_id] === index ? "selected" : ""}`}
-                  onClick={() =>
-                    handleOptionClick(quizData[currentQuestionIndex]._id, index)
-                  }
-                >
-                  {option.text}
-                </div>
-              ))}
+              {options
+                .filter((opt) => opt !== null)
+                .map((option, index) => {
+                  return (
+                    <div
+                      key={index}
+                      className="option"
+                      id={`${selectedOptions[_id] === index ? "selected" : ""}`}
+                      onClick={() =>
+                        handleOptionClick(
+                          quizData[currentQuestionIndex]._id,
+                          index
+                        )
+                      }
+                    >
+                      {option.text}
+                    </div>
+                  );
+                })}
             </div>
             <div className="navigation">
               <button

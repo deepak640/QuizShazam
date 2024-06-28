@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import * as XLSX from "xlsx";
-import axios from "axios";
 import "../css/Upload.css";
 import { useMutation } from "react-query";
 import { uploadData } from "../func/apiCalls";
@@ -10,7 +9,6 @@ const UploadQuiz = () => {
   const [file, setFile] = useState(null);
   const [jsonData, setJsonData] = useState(null);
   const [error, setError] = useState(null);
-  const [uploaded, setUploaded] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
   const { mutate, isLoading } = useMutation(async (values) => {
@@ -92,7 +90,6 @@ const UploadQuiz = () => {
       console.log("🚀 ~ finalJsonArray ~ finalJsonArray:", finalJsonArray);
 
       setJsonData(finalJsonArray);
-      setUploaded(true);
     };
 
     reader.readAsArrayBuffer(file);
@@ -105,7 +102,7 @@ const UploadQuiz = () => {
     }
     mutate(jsonData, {
       onSuccess: (data) => {
-        console.log("done");
+        console.log(data);
       },
       onError: (error) => {
         if (error.response.status === 413) {
@@ -139,7 +136,7 @@ const UploadQuiz = () => {
         <button className="btn" onClick={handleUpload} disabled={!file}>
           Upload
         </button>
-        <button className="btn" styl onClick={handlePost}>
+        <button className="btn" onClick={handlePost}>
           {isLoading ? "loading..." : "post"}
         </button>
       </div>
