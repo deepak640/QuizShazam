@@ -15,11 +15,13 @@ const Quiz = () => {
   const [answers, setAnswers] = useState([]);
   // initialize answers state as an empty array
   const [selectedOptions, setSelectedOptions] = useState({}); // Initialize an empty object to store selected options
-  const { mutate, isLoading: ispending } = useMutation(
-    async ({ values, config }) => {
-      return submitQuiz({ values, config });
-    }
-  );
+  const {
+    mutate,
+    data,
+    isLoading: ispending,
+  } = useMutation(async ({ values, config }) => {
+    return submitQuiz({ values, config });
+  });
   const handleOptionClick = (questionId, optionIndex) => {
     setSelectedOptions((prevOptions) => ({
       ...prevOptions,
@@ -78,13 +80,18 @@ const Quiz = () => {
           { values, config },
           {
             onSuccess: (data) => {
-              console.log("🚀 ~ handleSubmitClick ~ data:", data);
               messageApi.open({
                 type: "success",
-                content: "submitted",
+                content: data.message,
                 onClose: () => navigate("/"),
               });
             },
+            onError:(data)=>{
+              messageApi.open({
+                type: "error",
+                content: data.message,
+              });
+            }
           }
         );
       } catch (error) {
@@ -153,7 +160,10 @@ const Quiz = () => {
               {currentQuestionIndex < quizData.length - 1 ? (
                 <button onClick={handleNextClick}>Next</button>
               ) : (
-                <button onClick={handleSubmitClick} disabled={ispending}>
+                <button
+                  onClick={handleSubmitClick}
+                  disabled={ispending || data}
+                >
                   {ispending ? "loading ... " : "Submit"}
                 </button>
               )}

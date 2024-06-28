@@ -9,7 +9,6 @@ const Header = () => {
   const [navActive, setNavActive] = useState(false);
   const navigate = useNavigate();
   const userData = Cookies.get("user");
-
   useEffect(() => {
     if (userData) {
       setUser(JSON.parse(userData));

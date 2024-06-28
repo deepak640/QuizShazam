@@ -175,23 +175,27 @@ router.post("/submit-quiz", Authentication, async (req, res) => {
     await UserModel.findByIdAndUpdate(userId, {
       $push: { quizzesTaken: quizId },
     });
-    res.status(201).send({ message: "Quiz submitted successfully", score });
+    res.status(201).send({ message: "Quiz submitted successfully" });
   } catch (error) {
-    // console.log("🚀 ~ router.post ~ error:", error);
     res.status(500).send({ message: "Error submitting quiz", error });
   }
 });
 
 router.get("/profile", Authentication, async (req, res) => {
   const userID = req.user.id;
-  const profile = await UserModel.findById(userID);
-  console.log("🚀 ~ router.get ~ profile:", profile)
-  let quizzes = [];
-  for (let quiz of profile.quizzesTaken) {
-    let info = await Quiz.findById(quiz._id);
-    quizzes.push(info);
+
+  try {
+    const profile = await UserModel.findById(userID);
+    console.log("🚀 ~ router.get ~ profile:", profile)
+    let quizzes = [];
+    for (let quiz of profile.quizzesTaken) {
+      let info = await Quiz.findById(quiz._id);
+      quizzes.push(info);
+    }
+    res.json({ profile, quizzes });
+  } catch (error) {
+    res.status(500).send({ message: "Comeback later", error });
   }
-  res.json({ profile, quizzes });
 });
 
 module.exports = router;
