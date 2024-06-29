@@ -10,7 +10,7 @@ import { useMutation } from "react-query";
 const Register = () => {
   const [messageApi, contextHolder] = message.useMessage();
 
-  const { mutate, isLoading, error } = useMutation(async (values) => {
+  const { mutate, isLoading, data } = useMutation(async (values) => {
     return await userRegister(values);
   });
 
@@ -124,7 +124,11 @@ const Register = () => {
           <label htmlFor="checkbox">Remember me</label>
         </span>
         <br />
-        <button type="submit" className="signin-button" disabled={isLoading}>
+        <button
+          type="submit"
+          className="signin-button"
+          disabled={isLoading || data}
+        >
           {isLoading ? "loading ..." : "REGISTER"}
         </button>
         <hr />
@@ -132,7 +136,10 @@ const Register = () => {
           <Link to="/login" className="signin-google">
             login
           </Link>
-          <Googlebutton handleClick={SignInWithGoogle} isloading={isLoading} />
+          <Googlebutton
+            handleClick={SignInWithGoogle}
+            isloading={isLoading || data}
+          />
         </div>
       </form>
     </div>

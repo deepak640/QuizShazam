@@ -12,7 +12,7 @@ import { useState } from "react";
 const Login = () => {
   const [messageApi, contextHolder] = message.useMessage();
   const [isremember, setRemember] = useState(false);
-  const { mutate, isLoading, error } = useMutation(
+  const { mutate, data, isLoading } = useMutation(
     async ({ values, method }) => {
       return method === "google"
         ? await googleLogin(values)
@@ -129,7 +129,11 @@ const Login = () => {
             <label htmlFor="checkbox">Remember me</label>
           </span>
           <br />
-          <button type="submit" className="signin-button" disabled={isLoading}>
+          <button
+            type="submit"
+            className="signin-button"
+            disabled={isLoading || data}
+          >
             {isLoading ? "loading ..." : "LOG IN"}
           </button>
           <hr />
@@ -139,7 +143,7 @@ const Login = () => {
             </Link>
             <Googlebutton
               handleClick={SignInWithGoogle}
-              isLoading={isLoading}
+              isLoading={isLoading || data}
             />
           </div>
         </form>
