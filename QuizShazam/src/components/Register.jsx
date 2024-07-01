@@ -83,7 +83,7 @@ const Register = () => {
         <div>
           <label htmlFor="username">username</label>
           <br />
-          <input
+          <input autoComplete="flase"
             type="text"
             id="username"
             name="username"
@@ -96,7 +96,7 @@ const Register = () => {
         <div>
           <label htmlFor="email">email</label>
           <br />
-          <input
+          <input autoComplete="flase"
             type="email"
             id="email"
             name="email"
@@ -109,7 +109,7 @@ const Register = () => {
         <div>
           <label htmlFor="password">password</label>
           <br />
-          <input
+          <input autoComplete="flase"
             type="password"
             id="password"
             name="password"
@@ -120,7 +120,7 @@ const Register = () => {
           />
         </div>
         <span>
-          <input type="checkbox" id="checkbox" name="checkAccount" />
+          <input autoComplete="flase" type="checkbox" id="checkbox" name="checkAccount" />
           <label htmlFor="checkbox">Remember me</label>
         </span>
         <br />

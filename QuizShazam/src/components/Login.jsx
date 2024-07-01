@@ -95,7 +95,7 @@ const Login = () => {
           <div>
             <label htmlFor="email">email</label>
             <br />
-            <input
+            <input autoComplete="false"
               type="email"
               id="email"
               name="email"
@@ -108,7 +108,7 @@ const Login = () => {
           <div>
             <label htmlFor="password">password</label>
             <br />
-            <input
+            <input autoComplete="false"
               type="password"
               id="password"
               name="password"
@@ -119,7 +119,7 @@ const Login = () => {
             />
           </div>
           <span>
-            <input
+            <input autoComplete="false"
               type="checkbox"
               id="checkbox"
               name="checkAccount"

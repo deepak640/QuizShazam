@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import Lottie from "lottie-react";
+import dataNotFound from "../assets/dataNotFound.json";
 import { useNavigate, useParams } from "react-router-dom";
 import "../css/quiz.css";
 import { message } from "antd";
@@ -86,12 +88,12 @@ const Quiz = () => {
                 onClose: () => navigate("/"),
               });
             },
-            onError:(data)=>{
+            onError: (data) => {
               messageApi.open({
                 type: "error",
                 content: data.message,
               });
-            }
+            },
           }
         );
       } catch (error) {
@@ -171,9 +173,10 @@ const Quiz = () => {
           </div>
         </section>
       ) : (
-        <h1>not found</h1>
+        <>
+          <Lottie animationData={dataNotFound} />
+        </>
       )}
-      hello
     </>
   );
 };

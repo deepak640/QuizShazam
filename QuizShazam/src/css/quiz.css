@@ -124,3 +124,11 @@
   justify-content: center;
   align-items: center;
 }
+
+@media (max-width:460px){
+  .quiz-container{
+    /* background-color: red; */
+    width: 85%;
+    font-size: small;
+  }
+}

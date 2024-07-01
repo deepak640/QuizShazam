@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import Loader from "../shared/Loader";
 import "../css/profile.css";
@@ -10,27 +10,27 @@ const Profile = () => {
   const { token } = JSON.parse(Cookies.get("user"));
   const Navigate = useNavigate();
   const { data, isLoading } = useQuery(["profile", { token }], getProfile);
-  console.log("🚀 ~ Profile ~ data:", data)
+  // console.log("🚀 ~ Profile ~ data:", data)
   if (isLoading) return <Loader />;
-  const { quizzes, profile } = data;
+  const { profile, quizzes } = data;
   return (
     <div className="profile-section">
       <div className="user-details">
-        <div>
+        <div className="profile-field">
           <img src={profile.photoURL} alt="#" />
-          <span>
+          <div>
             <h4>{profile.username}</h4>
             <p>{profile.email}</p>
-          </span>
+          </div>
         </div>
-        <span className="password-field">
+        <div className="password-field">
           <label htmlFor="password">password</label>
           <br />
           <input type="password" id="password" name="password" />
-        </span>
+        </div>
       </div>
       <div className="quiz-taken">
-        <h3>quiz taken</h3>
+        <h3>Quiz taken</h3>
         {quizzes &&
           quizzes.map((data, i) => {
             return (
@@ -41,16 +41,14 @@ const Profile = () => {
               >
                 <h4>{data.title}</h4>
                 <p>{data.description}</p>
-                <p>timetaken : 15minutes</p>
               </div>
             );
           })}
         {/* {[...Array(5)].map((data, i) => {
             return (
-              <div className="cards" key={i}>
+              <div className="user-cards" key={i}>
                 <h4>asdas</h4>
                 <p>asds</p>
-                <p>timetaken : 15minutes</p>
               </div>
             );
           })} */}
