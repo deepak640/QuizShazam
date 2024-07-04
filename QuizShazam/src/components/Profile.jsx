@@ -13,6 +13,7 @@ const Profile = () => {
   // console.log("🚀 ~ Profile ~ data:", data)
   if (isLoading) return <Loader />;
   const { profile, quizzes } = data;
+  console.log("🚀 ~ Profile ~ quizzes:", quizzes)
   return (
     <div className="profile-section">
       <div className="user-details">
@@ -31,7 +32,7 @@ const Profile = () => {
       </div>
       <div className="quiz-taken">
         <h3>Quiz taken</h3>
-        {quizzes &&
+        {quizzes.length ?
           quizzes.map((data, i) => {
             return (
               <div
@@ -43,7 +44,9 @@ const Profile = () => {
                 <p>{data.description}</p>
               </div>
             );
-          })}
+          }) :
+          <h1>quiz not taken yes</h1>
+          }
         {/* {[...Array(5)].map((data, i) => {
             return (
               <div className="user-cards" key={i}>
