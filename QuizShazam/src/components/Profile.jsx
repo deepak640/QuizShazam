@@ -47,14 +47,6 @@ const Profile = () => {
           }) :
           <h1>quiz not taken yes</h1>
           }
-        {/* {[...Array(5)].map((data, i) => {
-            return (
-              <div className="user-cards" key={i}>
-                <h4>asdas</h4>
-                <p>asds</p>
-              </div>
-            );
-          })} */}
       </div>
     </div>
   );

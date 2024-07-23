@@ -38,7 +38,7 @@ const UploadQuiz = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const workbook = XLSX.read(event.target.result, { type: "array" });
-      let sheetName = workbook.SheetNames[2];
+      let sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
       if (!jsonData.length) {
@@ -85,7 +85,7 @@ const UploadQuiz = () => {
           title: `${subject} Quiz`,
           description: `Test your knowledge on ${subject} with this fun quiz`,
           questions: subjects[subject],
-          authorId: "lkasjkdhajkshd",
+          authorId: "AK",
         }));
       console.log("🚀 ~ finalJsonArray ~ finalJsonArray:", finalJsonArray);
 
