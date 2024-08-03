@@ -5,7 +5,7 @@ import { getAuth } from "firebase/auth";
 // https://firebase.google.com/docs/web/setup#available-libraries
 // Your web app's Firebase configuration
 const {
-  VITE_REACT_API_KEY,
+  VITE_REACT_AK,
   VITE_REACT_DOMAIN,
   VITE_REACT_PROJECT_NAME,
   VITE_REACT_API_BUCKET,
@@ -15,7 +15,7 @@ const {
 } = import.meta.env;
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: VITE_REACT_API_KEY,
+  apiKey: VITE_REACT_AK,
   authDomain: VITE_REACT_DOMAIN,
   projectId: VITE_REACT_PROJECT_NAME,
   storageBucket: VITE_REACT_API_BUCKET,
