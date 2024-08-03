@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import "../css/header.css";
+import "../assets/css/header.css";
 import Cookies from "js-cookie";
 
 const Header = () => {

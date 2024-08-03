@@ -1,6 +1,6 @@
 import { useFormik } from "formik";
 import { Link } from "react-router-dom";
-import "../css/login.css";
+import "../assets/css/login.css";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from "../auth/Firebase";
 import Cookies from "js-cookie";

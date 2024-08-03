@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import Loader from "../shared/Loader";
-import "../css/profile.css";
+import "../assets/css/profile.css";
 import Cookies from "js-cookie";
 import withAuth from "../auth/withAuth";
 import { useQuery } from "react-query";
@@ -13,7 +13,7 @@ const Profile = () => {
   // console.log("🚀 ~ Profile ~ data:", data)
   if (isLoading) return <Loader />;
   const { profile, quizzes } = data;
-  console.log("🚀 ~ Profile ~ quizzes:", quizzes)
+  console.log("🚀 ~ Profile ~ quizzes:", quizzes);
   return (
     <div className="profile-section">
       <div className="user-details">
@@ -32,7 +32,7 @@ const Profile = () => {
       </div>
       <div className="quiz-taken">
         <h3>Quiz taken</h3>
-        {quizzes.length ?
+        {quizzes.length ? (
           quizzes.map((data, i) => {
             return (
               <div
@@ -44,9 +44,10 @@ const Profile = () => {
                 <p>{data.description}</p>
               </div>
             );
-          }) :
+          })
+        ) : (
           <h1>quiz not taken yes</h1>
-          }
+        )}
       </div>
     </div>
   );

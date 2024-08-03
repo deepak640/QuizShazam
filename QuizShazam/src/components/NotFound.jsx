@@ -1,5 +1,5 @@
 import React from "react";
-import "../css/NotFound.css";
+import "../assets/css/NotFound.css";
 import Lottie from "lottie-react";
 import animatedata from "../assets/errorpage.json";
 import { useNavigate } from "react-router-dom";

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import * as XLSX from "xlsx";
-import "../css/Upload.css";
+import "../assets/css/Upload.css";
 import { useMutation } from "react-query";
 import { uploadData } from "../func/apiCalls";
 import { message } from "antd";

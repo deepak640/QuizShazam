@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Lottie from "lottie-react";
 import dataNotFound from "../assets/dataNotFound.json";
 import { useNavigate, useParams } from "react-router-dom";
-import "../css/quiz.css";
+import "../assets/css/quiz.css";
 import { message } from "antd";
 import Loader from "../shared/Loader";
 import Cookies from "js-cookie";

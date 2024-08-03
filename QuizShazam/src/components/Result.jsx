@@ -1,5 +1,5 @@
 import React from "react";
-import "../css/result.css";
+import "../assets/css/result.css";
 import Cookies from "js-cookie";
 import { useParams } from "react-router-dom";
 import Loader from "../shared/Loader";

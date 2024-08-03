@@ -1,6 +1,6 @@
 import { IoArrowForward } from "react-icons/io5";
 import { Link } from "react-router-dom";
-import "../css/quiz.css";
+import "../assets/css/quiz.css";
 import withAuth from "../auth/withAuth";
 import Loader from "../shared/Loader";
 import Cookie from "js-cookie";
