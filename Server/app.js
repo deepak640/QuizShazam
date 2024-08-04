@@ -12,8 +12,6 @@ require("dotenv").config();
 var app = express();
 app.disable("etag");
 // view engine setup
-app.set("views", path.join(__dirname, "views"));
-app.set("view engine", "jade");
 app.use(cors());
 app.use(logger("dev"));
 app.use(bodyparser.json({ limit: "50mb" }));
