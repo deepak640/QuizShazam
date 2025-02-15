@@ -5,8 +5,11 @@ var jwt = require("jsonwebtoken");
 var Authentication = require("../middleware/auth");
 var UserModel = require("../model/user");
 const Quiz = require("../model/quiz");
+const multer = require("multer");
+require("dotenv").config();
 const Question = require("../model/question");
 const Response = require("../model/response");
+const { BlobServiceClient } = require("@azure/storage-blob");
 /* GET users listing. */
 var salt = bcrypt.genSaltSync(10);
 
@@ -14,34 +17,52 @@ router.get("/", function (req, res, next) {
   res.send("respond with a resource");
 });
 
-router.post("/register", async (req, res) => {
-  const { username, email, password, photoURL } = req.body;
+const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_URI);
+const containerClient = blobServiceClient.getContainerClient("uploads"); // Replace with your container name
+
+// Multer setup to handle file uploads
+const storage = multer.memoryStorage(); // Store files in memory temporarily
+const upload = multer({ storage: storage }).single("file"); // Only accept a s
+
+router.post("/register", upload, async (req, res) => {
+  const { username, email, password } = req.body;
+  const photo = req.file;
 
   try {
     if (await UserModel.findOne({ email })) {
       return res.status(401).json({ error: "User already exists" });
     }
 
+    let uploadedPhotoURL = "";
+    if (photo) {
+      const blobName = `profile-${Date.now()}-${email}.jpg`;
+      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+      // Upload the file to Azure Blob Storage
+      await blockBlobClient.upload(photo.buffer, photo.size);
+
+      uploadedPhotoURL = `https://${process.env.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/${containerClient.containerName}/${blobName}`;
+
+    }
+
     const newUser = new UserModel({
       username,
       email,
-      password: password && bcrypt.hashSync(password, salt),
-      photoURL: password ? "" : photoURL,
-      googleAuth: !password,
+      password: password && bcrypt.hashSync(password, 10),
+      photoURL: password ?  uploadedPhotoURL : photoURL,
     });
 
     await newUser.save();
 
-    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
-    res.status(200).json({ token, photoURL: password ? "" : photoURL });
+    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+
+    // Return JSON response instead of file rendering
+    res.status(200).json({ token, photoURL: uploadedPhotoURL || "" });
   } catch (error) {
     console.log("🚀 ~ router.post ~ error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -119,8 +140,8 @@ router.get("/results/:id", Authentication, async (req, res) => {
   const { id } = req.params;
   try {
     const results = await Response.findOne({ user: userId, quiz: id })
-    .populate("quiz", "title")
-    .populate("answers.questionId");
+      .populate("quiz", "title")
+      .populate("answers.questionId");
     res.status(200).send(results);
   } catch (error) {
     res.status(500).send({ message: "Error retrieving results", error });
