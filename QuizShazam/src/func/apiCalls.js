@@ -1,8 +1,8 @@
 import axios from "axios";
 const { VITE_REACT_API_URL } = import.meta.env;
 
-export const getQuizzes = async ({queryKey}) => {
-  const [key,{token}] = queryKey
+export const getQuizzes = async ({ queryKey }) => {
+  const [key, { token }] = queryKey
   const res = await axios.get(`${VITE_REACT_API_URL}/quizzes`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -63,7 +63,12 @@ export const userLogin = async (values) => {
 };
 
 export const userRegister = async (values) => {
-  const res = await axios.post(`${VITE_REACT_API_URL}/users/register`, values);
+  const res = await axios.post(`${VITE_REACT_API_URL}/users/register`, values,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
   return res.data;
 };
 

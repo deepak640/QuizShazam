@@ -10,3 +10,46 @@
   z-index: -1;
   position: relative;
 }
+
+
+.upload-div {
+  height: 50vh;
+}
+
+.upload-div div {
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  align-items: center;
+}
+
+.upload-div .ant-upload-select {
+  height: 400px !important;
+  width: 400px !important;
+}
+
+.upload-div .ant-upload-select button {
+  font-size: large !important;
+}
+
+.ant-upload-list-item-container {
+  height: 300px !important;
+  width: 300px !important;
+}
+
+.ant-upload-list-item-container{
+  height: 400px !important;
+  width: 400px !important;
+}
+
+@media screen and (max-width: 790px) {
+  .upload-div .ant-upload-select {
+    height: 20rem !important;
+    width: 20rem !important;
+  }
+
+  .ant-upload-list-item-container {
+    height: 20rem !important;
+    width: 20rem !important;
+  }
+}

@@ -7,19 +7,47 @@ import Cookies from "js-cookie";
 import Googlebutton from "../shared/Googlebutton";
 import { userRegister } from "../func/apiCalls";
 import { useMutation } from "react-query";
+import { useState } from "react";
+import { Modal, Upload } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+
 const Register = () => {
   const [messageApi, contextHolder] = message.useMessage();
+  const [isModalOpen, setIsModalOpen] = useState({ open: false, values: {} });
+  const [fileList, setFileList] = useState([]);
+  const [file, setFile] = useState(null);
+
+  const uploadButton = (
+    <button
+      style={{ border: 0, background: "none" }}
+      type="button"
+    >
+      <PlusOutlined />
+      <div style={{ marginTop: 8 }}>Upload</div>
+    </button>
+  );
 
   const { mutate, isLoading, data } = useMutation(async (values) => {
     return await userRegister(values);
   });
 
   const formSubmit = async (values) => {
-    mutate(values, {
+    setIsModalOpen({ open: true, values });
+  };
+
+  const handleUploadCancel = () => {
+    setIsModalOpen((prev) => ({ ...prev, open: false }));
+    let values = isModalOpen.values;
+    const formData = new FormData();
+    formData.append("username", values.username);
+    formData.append("email", values.email);
+    formData.append("password", values.password);
+    formData.append("file", file);
+    mutate(formData, {
       onSuccess: (data) => {
         console.log("🚀 ~ formSubmit ~ data:", data);
-        Cookies.set("user", JSON.stringify(data), { expires: 1 });
-        window.location.href = "/dashboard";
+        // Cookies.set("user", JSON.stringify(data), { expires: 1 });
+        // window.location.href = "/dashboard";
       },
       onError: (error) => {
         console.log(error.response.data.error);
@@ -29,6 +57,13 @@ const Register = () => {
         });
       },
     });
+  };
+
+  const handleUpload = async ({ fileList: newFileList }) => {
+    setFileList(newFileList.slice(-1)); // Keep only the latest file
+    if (newFileList.length > 0 && newFileList[0].originFileObj) {
+      setFile(newFileList[0].originFileObj);
+    }
   };
 
   const SignInWithGoogle = async () => {
@@ -47,7 +82,6 @@ const Register = () => {
           window.location.href = "/dashboard";
         },
         onError: (error) => {
-          // console.log(error.response.data.error);
           messageApi.open({
             content: `${error.response.data.error}`,
             type: "error",
@@ -69,12 +103,14 @@ const Register = () => {
       formSubmit(values);
     },
   });
+
   if (isLoading) {
     messageApi.open({
       content: "loading",
       type: "loading",
     });
   }
+
   return (
     <div className="Login-container">
       {contextHolder}
@@ -83,7 +119,7 @@ const Register = () => {
         <div>
           <label htmlFor="username">username</label>
           <br />
-          <input autoComplete="flase"
+          <input autoComplete="false"
             type="text"
             id="username"
             name="username"
@@ -96,7 +132,7 @@ const Register = () => {
         <div>
           <label htmlFor="email">email</label>
           <br />
-          <input autoComplete="flase"
+          <input autoComplete="false"
             type="email"
             id="email"
             name="email"
@@ -109,7 +145,7 @@ const Register = () => {
         <div>
           <label htmlFor="password">password</label>
           <br />
-          <input autoComplete="flase"
+          <input autoComplete="false"
             type="password"
             id="password"
             name="password"
@@ -120,7 +156,7 @@ const Register = () => {
           />
         </div>
         <span>
-          <input autoComplete="flase" type="checkbox" id="checkbox" name="checkAccount" />
+          <input autoComplete="false" type="checkbox" id="checkbox" name="checkAccount" />
           <label htmlFor="checkbox">Remember me</label>
         </span>
         <br />
@@ -140,6 +176,27 @@ const Register = () => {
             handleClick={SignInWithGoogle}
             isloading={isLoading || data}
           />
+          <Modal
+            title="Upload Files"
+            centered
+            footer={null}
+            width={500}
+            open={isModalOpen.open}
+            onOk={handleUploadCancel}
+            onCancel={handleUploadCancel}
+          >
+            <div className="upload-div">
+              <Upload
+                listType="picture-circle"
+                fileList={fileList}
+                onChange={handleUpload}
+                onRemove={() => setFileList([])}
+                beforeUpload={() => false} // Prevent automatic upload
+              >
+                {fileList.length >= 1 ? null : uploadButton}
+              </Upload>
+            </div>
+          </Modal>
         </div>
       </form>
     </div>

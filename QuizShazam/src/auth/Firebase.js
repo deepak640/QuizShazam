@@ -22,7 +22,22 @@ const firebaseConfig = {
   messagingSenderId: VITE_REACT_MESSAGE,
   appId: VITE_REACT_APPID,
   measurementId: VITE_REACT_ID,
+  // apiKey: "AIzaSyCAtJkO_oYSmJsSl17g7uZ84nyPa7lj37I",
+
+  // authDomain: "bazario-79ecc.firebaseapp.com",
+
+  // projectId: "bazario-79ecc",
+
+  // storageBucket: "bazario-79ecc.firebasestorage.app",
+
+  // messagingSenderId: "152291991640",
+
+  // appId: "1:152291991640:web:e8bfa7923f9f6f2d7bea2d",
+
+  // measurementId: "G-KFMQV7ML3W"
 };
+
+
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
