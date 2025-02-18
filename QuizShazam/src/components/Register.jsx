@@ -46,8 +46,8 @@ const Register = () => {
     mutate(formData, {
       onSuccess: (data) => {
         console.log("🚀 ~ formSubmit ~ data:", data);
-        // Cookies.set("user", JSON.stringify(data), { expires: 1 });
-        // window.location.href = "/dashboard";
+        Cookies.set("user", JSON.stringify(data), { expires: 1 });
+        window.location.href = "/dashboard";
       },
       onError: (error) => {
         console.log(error.response.data.error);
