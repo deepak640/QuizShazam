@@ -5,7 +5,10 @@ import "../assets/css/profile.css";
 import Cookies from "js-cookie";
 import withAuth from "../auth/withAuth";
 import { useQuery } from "react-query";
+import LineChart from "./Linechart";
 import { getProfile } from "../func/apiCalls";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+import { Doughnut, Line } from "react-chartjs-2";
 const Profile = () => {
   const { token } = JSON.parse(Cookies.get("user"));
   const Navigate = useNavigate();
@@ -48,6 +51,10 @@ const Profile = () => {
         ) : (
           <h1>quiz not taken yes</h1>
         )}
+      </div>
+      <div className="quiz-chart">
+      <h1>Quiz stats</h1>
+        <LineChart/>
       </div>
     </div>
   );

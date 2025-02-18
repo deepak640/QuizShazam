@@ -12,7 +12,12 @@ require("dotenv").config();
 var app = express();
 app.disable("etag");
 // view engine setup
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  allowedHeaders: 'Content-Type,Authorization',
+  credentials: true
+}));
 app.use(logger("dev"));
 app.use(bodyparser.json({ limit: "50mb" }));
 app.use(bodyparser.urlencoded({ limit: "50mb", extended: true }));

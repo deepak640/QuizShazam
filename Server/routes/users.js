@@ -10,6 +10,7 @@ require("dotenv").config();
 const Question = require("../model/question");
 const Response = require("../model/response");
 const { BlobServiceClient } = require("@azure/storage-blob");
+const { default: mongoose } = require("mongoose");
 /* GET users listing. */
 var salt = bcrypt.genSaltSync(10);
 
@@ -49,7 +50,7 @@ router.post("/register", upload, async (req, res) => {
       username,
       email,
       password: password && bcrypt.hashSync(password, 10),
-      photoURL: password ?  uploadedPhotoURL : photoURL,
+      photoURL: password ? uploadedPhotoURL : photoURL,
     });
 
     await newUser.save();
@@ -215,6 +216,55 @@ router.get("/profile", Authentication, async (req, res) => {
     res.json({ profile, quizzes });
   } catch (error) {
     res.status(500).send({ message: "Comeback later", error });
+  }
+});
+
+router.get("/total-quizMatrix", async (req, res) => {
+  try {
+    let pipeline = []
+    let matchObj = {}
+    if (req.query.userid) {
+      matchObj.user = new mongoose.Types.ObjectId(req.query.userid)
+    }
+    if (req.query.quizid) {
+      matchObj.quiz = new mongoose.Types.ObjectId(req.query.quizid)
+    }
+    if (req.query.startdate) {
+      matchObj.createdAt = { $gte: new Date(req.query.startdate) }
+    }
+    pipeline.push(
+      {
+        $match: matchObj
+      },
+      {
+        $lookup: {
+          from: "quizzes",
+          localField: "quiz",
+          foreignField: "_id",
+          as: "quizObj"
+        }
+      },
+      {
+        $unwind: "$quizObj"
+      },
+      {
+        $addFields: {
+          "title": "$quizObj.title"
+        }
+      },
+      {
+        $project: {
+          "score": 1,
+          "title": 1
+        }
+      }
+    )
+
+    const quizzes = await Response.aggregate(pipeline);
+    res.status(200).send(quizzes);
+  } catch (error) {
+    console.log(error)
+    res.status(500).send({ message: "Error retrieving quizzes", error });
   }
 });
 
