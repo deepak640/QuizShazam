@@ -10,7 +10,7 @@ const Header = () => {
   const [navActive, setNavActive] = useState(false);
   const navigate = useNavigate();
   const userData = Cookies.get("user");
-  const [isModalOpen, setIsModalOpen] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleLogout = () => {
     Cookies.remove("user");
