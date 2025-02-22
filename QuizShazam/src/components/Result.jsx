@@ -4,7 +4,7 @@ import Cookies from "js-cookie";
 import { useParams } from "react-router-dom";
 import Loader from "../shared/Loader";
 import { useQuery } from "react-query";
-import { getResult } from "../func/apiCalls";
+import { getResult } from "../func/apiCalls.service";
 const Result = () => {
   const { id } = useParams();
   const { token } = JSON.parse(Cookies.get("user"));
@@ -27,8 +27,8 @@ const Result = () => {
                   option.isCorrect
                     ? "correct"
                     : optionIndex === answer.selectedOption
-                    ? "incorrect"
-                    : ""
+                      ? "incorrect"
+                      : ""
                 }
               >
                 {option.text}

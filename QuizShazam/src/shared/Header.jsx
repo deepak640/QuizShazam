@@ -2,19 +2,15 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../assets/css/header.css";
 import Cookies from "js-cookie";
-
+import { Modal } from 'antd';
+import Chatbot from "../components/Chatbot";
 const Header = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
   const [navActive, setNavActive] = useState(false);
   const navigate = useNavigate();
   const userData = Cookies.get("user");
-  useEffect(() => {
-    if (userData) {
-      setUser(JSON.parse(userData));
-      setIsLoggedIn(true);
-    }
-  }, []);
+  const [isModalOpen, setIsModalOpen] = useState(true);
 
   const handleLogout = () => {
     Cookies.remove("user");
@@ -23,8 +19,30 @@ const Header = () => {
     navigate("/");
   };
 
+  const showModal = () => {
+    setIsModalOpen(true);
+  };
+  const handleOk = () => {
+    setIsModalOpen(false);
+  };
+  const handleCancel = () => {
+    setIsModalOpen(false);
+  };
+
+  useEffect(() => {
+    if (userData) {
+      setUser(JSON.parse(userData));
+      setIsLoggedIn(true);
+    }
+  }, []);
+
   return (
     <nav>
+      <Modal title="Basic Modal" centered width={900} footer={null} open={isModalOpen} onOk={handleOk} onCancel={handleCancel}>
+        <div>
+          <Chatbot />
+        </div>
+      </Modal>
       <div className="logo" onClick={() => navigate("/")}>
         <h1>QuizShazam</h1>
       </div>
@@ -41,7 +59,7 @@ const Header = () => {
                 </a>
               </li>
               <li>
-                <a href="/contact">
+                <a onClick={showModal}>
                   <i className="ph-bold ph-question"></i>Help
                 </a>
               </li>

@@ -7,7 +7,7 @@ import Cookies from "js-cookie";
 import { useMutation } from "react-query";
 import { message } from "antd";
 import Googlebutton from "../shared/Googlebutton";
-import { googleLogin, userLogin } from "../func/apiCalls";
+import { googleLogin, userLogin } from "../func/apiCalls.service";
 import { useState } from "react";
 const Login = () => {
   const [messageApi, contextHolder] = message.useMessage();

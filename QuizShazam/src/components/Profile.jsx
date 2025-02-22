@@ -6,7 +6,7 @@ import Cookies from "js-cookie";
 import withAuth from "../auth/withAuth";
 import { useQuery } from "react-query";
 import LineChart from "./Linechart";
-import { getProfile } from "../func/apiCalls";
+import { getProfile } from "../func/apiCalls.service";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Doughnut, Line } from "react-chartjs-2";
 const Profile = () => {
@@ -53,8 +53,8 @@ const Profile = () => {
         )}
       </div>
       <div className="quiz-chart">
-      <h1>Quiz stats</h1>
-        <LineChart/>
+        <h1>Quiz stats</h1>
+        <LineChart />
       </div>
     </div>
   );
