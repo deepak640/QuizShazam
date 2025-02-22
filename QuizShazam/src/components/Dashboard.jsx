@@ -7,7 +7,7 @@ import Cookie from "js-cookie";
 import { useQuery } from "react-query";
 import Lottie from "lottie-react";
 import dataNotFound from "../assets/dataNotFound.json";
-import { getQuizzes } from "../func/apiCalls";
+import { getQuizzes } from "../func/apiCalls.service";
 const Dashboard = () => {
   const { token } = JSON.parse(Cookie.get("user"));
   const { data, isLoading } = useQuery(["quizzes", { token }], getQuizzes);

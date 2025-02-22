@@ -8,7 +8,7 @@ import Loader from "../shared/Loader";
 import Cookies from "js-cookie";
 import { useMutation, useQuery } from "react-query";
 import withAuth from "../auth/withAuth";
-import { getQuestions, submitQuiz } from "../func/apiCalls";
+import { getQuestions, submitQuiz } from "../func/apiCalls.service";
 const Quiz = () => {
   const { id } = useParams();
   const [messageApi, contextHolder] = message.useMessage();

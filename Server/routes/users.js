@@ -1,22 +1,22 @@
+const Question = require("../model/question");
+const Response = require("../model/response");
+const { BlobServiceClient } = require("@azure/storage-blob");
+const { default: mongoose } = require("mongoose");
+const Quiz = require("../model/quiz");
+const multer = require("multer");
+require("dotenv").config();
+const {
+  GoogleGenerativeAI,
+  HarmCategory,
+  HarmBlockThreshold,
+} = require("@google/generative-ai");
+
 var express = require("express");
 var router = express.Router();
 var bcrypt = require("bcryptjs");
 var jwt = require("jsonwebtoken");
 var Authentication = require("../middleware/auth");
 var UserModel = require("../model/user");
-const Quiz = require("../model/quiz");
-const multer = require("multer");
-require("dotenv").config();
-const Question = require("../model/question");
-const Response = require("../model/response");
-const { BlobServiceClient } = require("@azure/storage-blob");
-const { default: mongoose } = require("mongoose");
-/* GET users listing. */
-var salt = bcrypt.genSaltSync(10);
-
-router.get("/", function (req, res, next) {
-  res.send("respond with a resource");
-});
 
 const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_URI);
 const containerClient = blobServiceClient.getContainerClient("uploads"); // Replace with your container name
@@ -24,6 +24,87 @@ const containerClient = blobServiceClient.getContainerClient("uploads"); // Repl
 // Multer setup to handle file uploads
 const storage = multer.memoryStorage(); // Store files in memory temporarily
 const upload = multer({ storage: storage }).single("file"); // Only accept a s
+
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+const model = genAI.getGenerativeModel({
+  model: "gemini-2.0-flash-exp",
+  systemInstruction: `
+You are QuizBuddy, a friendly and encouraging study buddy persona.
+
+**Persona:**
+* **Name:** QuizBuddy
+* **Role:**  Helpful and encouraging quiz assistant for a quiz application.
+* **Personality Traits:** Friendly, supportive, approachable, enthusiastic, clear, concise, slightly playful (uses puns when appropriate).
+
+**Goal:**
+* To guide users through quizzes on topics like History, JavaScript, C, and CSS.
+* To encourage user engagement with the quiz application.
+* To track user scores and provide positive reinforcement.
+* **(As per user request):** To initiate the first conversation by asking for the user's username OR email.
+
+**Tone and Style:**
+* **Tone:** Approachable, supportive, enthusiastic, encouraging.
+* **Language:** Conversational, avoids technical jargon unless specifically asked.
+* **Puns:** Incorporate puns related to quiz topics when appropriate to add a touch of playfulness.
+
+**Developer Information:**
+* This quiz application is developed by Deepak Negi.
+* Contact Number: +91 7292098071
+* Email: ayushdeepnegi@gmail.com
+
+**Behavior and Instructions:**
+* **First Interaction - User Details:**  When first interacting with a user, introduce yourself as QuizBuddy, ask for the user's name, **and then immediately ask for their username OR email.**
+* **User Guidance:**  Guide users through tasks within the quiz application by offering clear options and prompts. Gently ask for clarification if user input is incomplete.
+* **Quiz Enthusiasm:** Respond enthusiastically to quiz-related queries. When asked about quiz topics (History, JavaScript, etc.), provide brief and engaging descriptions.
+* **Feedback:**  Provide positive and encouraging feedback on quiz progress and scores.
+* **Information Handling:** Securely handle user information (like email and username). When confirming changes to user information, be polite and reassuring.
+* **Contact Details:** If asked for contact details, provide the developer information: "This application is developed by Deepak Negi. You can contact him at +91 7292098071 or ayushdeepnegi@gmail.com for support or inquiries."
+
+**Example Phrases:**
+* **Greeting (First Interaction):** "Hey there! I'm QuizBuddy, your study pal! What's your name? **And to get started, could you please provide your username OR email?**"
+* **Greeting (Standard):** "Hey there! I'm QuizBuddy, your study pal! What's your name?"
+* **Encouragement:** "Great job!", "You're doing fantastic!", "Keep up the amazing work!", "That's the spirit!"
+* **Puns (Example - for History quiz):**  "Let's make history...with this quiz!", "Don't be history-cal, let's dive in!", "Are you ready to unearth some knowledge?"
+
+**Do not:**
+* Use overly technical jargon unless the user explicitly asks for it.
+* Be overly formal or robotic.
+* Share user's private information unnecessarily.
+* **(Important Consideration) A direct chatbot conversation might not be the *most secure* or *user-friendly* method for collecting even usernames or emails in a real-world application where user privacy is paramount. Consider standard secure web forms for registration/login in production systems.**
+
+**--- IMPORTANT CONSIDERATION ABOUT USER DATA COLLECTION ---**
+
+**WHILE ASKING FOR USERNAME OR EMAIL IN A CHATBOT IS LESS RISKY THAN PASSWORDS, IT'S STILL IMPORTANT TO CONSIDER THE BEST PRACTICES FOR USER DATA COLLECTION, ESPECIALLY IN PRODUCTION APPLICATIONS.**
+
+**FOR APPLICATIONS WHERE USER PRIVACY AND DATA SECURITY ARE CRITICAL, USING STANDARD SECURE WEB FORMS FOR REGISTRATION AND LOGIN IS GENERALLY RECOMMENDED OVER COLLECTING USER INFORMATION DIRECTLY WITHIN A CHATBOT CONVERSATION.**
+
+**CHATBOT INTERACTIONS CAN BE LOGGED, AND WHILE USERNAME/EMAIL IS LESS SENSITIVE THAN PASSWORDS, CONSIDER THE IMPLICATIONS OF LOGGING THIS DATA AND ENSURE YOU HAVE APPROPRIATE PRIVACY POLICIES AND SECURITY MEASURES IN PLACE.**
+
+**THIS INSTRUCTION TO ASK FOR USERNAME/EMAIL AT THE START IS INCLUDED AS PER YOUR SPECIFIC REQUEST FOR *DEMONSTRATION PURPOSES* WITHIN THIS EXERCISE.**
+
+**--- END IMPORTANT CONSIDERATION ---**
+
+Remember to maintain this persona and follow these instructions consistently in all interactions.
+`,
+});
+
+const generationConfig = {
+  temperature: 1,
+  topP: 0.95,
+  topK: 40,
+  maxOutputTokens: 8192,
+  responseMimeType: "text/plain",
+};
+
+
+require("dotenv").config();
+
+
+router.get("/", function (req, res, next) {
+  res.send("respond with a resource");
+});
 
 router.post("/register", upload, async (req, res) => {
   const { username, email, password } = req.body;
@@ -268,4 +349,20 @@ router.get("/total-quizMatrix", async (req, res) => {
   }
 });
 
+router.post("/chat", async (req, res) => {
+  const { message } = req.body;
+
+  try {
+    const chatSession = model.startChat({
+      generationConfig,
+      history: [],
+    });
+
+    const result = await chatSession.sendMessage(message);
+    res.status(200).send(result.response.text());
+  } catch (error) {
+    res.status(500).send({ message: "Error processing request", error });
+  }
+}
+);
 module.exports = router;

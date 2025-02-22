@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import * as XLSX from "xlsx";
 import "../assets/css/Upload.css";
 import { useMutation } from "react-query";
-import { uploadData } from "../func/apiCalls";
+import { uploadData } from "../func/apiCalls.service";
 import { message } from "antd";
 
 const UploadQuiz = () => {

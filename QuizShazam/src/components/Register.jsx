@@ -5,7 +5,7 @@ import { useFormik } from "formik";
 import { message } from "antd";
 import Cookies from "js-cookie";
 import Googlebutton from "../shared/Googlebutton";
-import { userRegister } from "../func/apiCalls";
+import { userRegister } from "../func/apiCalls.service";
 import { useMutation } from "react-query";
 import { useState } from "react";
 import { Modal, Upload } from "antd";
