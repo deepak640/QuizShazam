@@ -8,6 +8,7 @@ var indexRouter = require("./routes/index");
 var usersRouter = require("./routes/users");
 var bodyparser = require("body-parser");
 var cors = require("cors");
+const adminSeeder = require("./seeder/adminSeeder");
 require("dotenv").config();
 var app = express();
 app.disable("etag");
@@ -19,6 +20,7 @@ app.disable("etag");
 //   credentials: true
 // }));
 
+adminSeeder();
 
 app.use(cors({
   origin: true,

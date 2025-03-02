@@ -1,6 +1,5 @@
 const Question = require("../model/question");
 const Response = require("../model/response");
-const Quiz = require("../model/quiz");
 
 const { BlobServiceClient } = require("@azure/storage-blob");
 const { default: mongoose } = require("mongoose");

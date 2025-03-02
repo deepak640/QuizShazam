@@ -52,10 +52,32 @@ router.get("/quizzes", Authorization, async (req, res) => {
     console.log("🚀 ~ router.get ~ id:", id);
     const quizzes = await Quiz.find().select("title description questions");
     const quizzesTaken = await userModel.findById(id).select("quizzesTaken");
-    res.status(200).send({quizzes, quizzesTaken});
+    res.status(200).send({ quizzes, quizzesTaken });
   } catch (error) {
     console.log("🚀 ~ router.get ~ error:", error)
     res.status(500).send({ message: "Error retrieving quizzes", error });
+  }
+});
+
+router.get("/getAllQuizzes", async (req, res) => {
+  try {
+    const quizzes = await Quiz.find();
+    res.status(200).send(quizzes);
+  } catch (error) {
+    console.log("🚀 ~ router.get ~ error:", error)
+    res.status(500).send({ message: "Error retrieving quizzes", error });
+  }
+});
+
+
+// Get all users
+router.get("/users", async (req, res) => {
+  try {
+    const users = await userModel.find();
+    res.status(200).send(users);
+  } catch (error) {
+    console.log("🚀 ~ router.get ~ error:", error);
+    res.status(500).send({ message: "Error retrieving users", error });
   }
 });
 
