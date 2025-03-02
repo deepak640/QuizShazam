@@ -1,23 +1,22 @@
-const Question = require("../model/question");
-const Response = require("../model/response");
-
-const { BlobServiceClient } = require("@azure/storage-blob");
-const { default: mongoose } = require("mongoose");
-const Quiz = require("../model/quiz");
-const multer = require("multer");
-require("dotenv").config();
-const {
-  GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
-} = require("@google/generative-ai");
-
+var Question = require("../model/question");
+var Response = require("../model/response");
+var multer = require("multer");
 var express = require("express");
 var router = express.Router();
 var bcrypt = require("bcryptjs");
 var jwt = require("jsonwebtoken");
 var Authentication = require("../middleware/auth");
 var UserModel = require("../model/user");
+const { BlobServiceClient } = require("@azure/storage-blob");
+const { default: mongoose } = require("mongoose");
+
+const Quiz = require("../model/quiz");
+require("dotenv").config();
+
+const {
+  GoogleGenerativeAI,
+} = require("@google/generative-ai");
+
 
 const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_URI);
 const containerClient = blobServiceClient.getContainerClient("uploads"); // Replace with your container name
@@ -39,7 +38,6 @@ const generationConfig = {
 };
 
 
-require("dotenv").config();
 
 
 router.get("/", function (req, res, next) {
@@ -85,6 +83,7 @@ router.post("/register", upload, async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -98,7 +97,14 @@ router.post("/login", async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({ error: "Invalid password" });
     }
-
+    console.log("🚀 ~ router.post ~ user:", user);
+    if (user.role) {
+      console.log("🚀 ~ router.post ~ user.role:", user.role);
+      const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+        expiresIn: "1h",
+      });
+      return res.status(200).json({ token });
+    }
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
@@ -142,19 +148,7 @@ router.post("/login/google", async (req, res) => {
   }
 });
 
-router.get("/protected", Authentication, async (req, res) => {
-  try {
-    // Use the user ID from the request object (set by the middleware)
-    const user = await UserModel.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
 
-    res.status(200).json({ message: "This is a protected route", user });
-  } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
 
 // Get user's quiz results
 router.get("/results/:id", Authentication, async (req, res) => {

@@ -2,14 +2,14 @@ var express = require("express");
 var router = express.Router();
 const Quiz = require("../model/quiz");
 const Question = require("../model/question");
-const Authorization = require("../middleware/auth");
 const userModel = require("../model/user");
+const Authentication = require("../middleware/auth");
 /* GET home page. */
 router.get("/", function (req, res, next) {
   res.render("index", { title: "Express" });
 });
 
-router.post("/create-quiz", async (req, res) => {
+router.post("/create-quiz", Authentication, async (req, res) => {
   const array = req.body;
   try {
     const quizzes = await Promise.all(
@@ -46,7 +46,7 @@ router.post("/create-quiz", async (req, res) => {
 });
 
 // Get all quizzes
-router.get("/quizzes", Authorization, async (req, res) => {
+router.get("/quizzes", Authentication, async (req, res) => {
   try {
     const { id } = req.user;
     console.log("🚀 ~ router.get ~ id:", id);
@@ -69,6 +69,18 @@ router.get("/getAllQuizzes", async (req, res) => {
   }
 });
 
+router.get("/protected", Authentication, async (req, res) => {
+  try {
+    // Use the user ID from the request object (set by the middleware)
+    const user = await userModel.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 // Get all users
 router.get("/users", async (req, res) => {

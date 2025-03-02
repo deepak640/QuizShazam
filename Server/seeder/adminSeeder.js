@@ -12,6 +12,7 @@ const adminSeeder = async () => {
       username: "Admin",
       email: "admin@admin.com",
       password: encryptedPassword,
+      role: "admin",
     }).save();
   } catch (error) {
     console.error(error);

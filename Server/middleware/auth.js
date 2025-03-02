@@ -10,9 +10,9 @@ const Authentication = (req, res, next) => {
 
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) return res.sendStatus(403);
-
+    console.log(user, "user");
     // Attach the user ID (converted back to ObjectId) to the request object
-    req.user = { id: new mongoose.Types.ObjectId(user.id) };
+    req.user = { id: new mongoose.Types.ObjectId(user.id), role: user.role };
     // console.log("🚀 ~ jwt.verify ~ user:", req.user)
     next();
   });

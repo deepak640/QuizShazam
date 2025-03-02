@@ -2,10 +2,11 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const userSchema = new Schema({
-  username: { type: String, required: true, unique: true },
-  email: { type: String, required: true, unique: true },
+  username: { type: String },
+  email: { type: String },
   password: { type: String },
-  photoURL:{type:String},
+  photoURL: { type: String },
+  role: { type: String },
   googleAuth: { type: Boolean },
   quizzesTaken: [{ type: Schema.Types.ObjectId, ref: "Quiz" }],
   createdAt: { type: Date, default: Date.now },
