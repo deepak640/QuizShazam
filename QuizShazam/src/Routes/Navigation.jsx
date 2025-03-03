@@ -7,6 +7,7 @@ import { Container, Dashboard, Home, Profile, Quiz, Result } from "../Exports";
 import NotFound from "../components/NotFound";
 import Loader from "../shared/Loader";
 import UploadQuiz from "../components/Upload";
+import ResetPassword from "../components/ResetPassword";
 const Navigation = () => {
   return (
     <>
@@ -28,6 +29,7 @@ const Navigation = () => {
                 <Route path="quiz/:id" element={<Result />} />
               </Route>
               <Route path="*" element={<NotFound />} />
+              <Route path="/reset-password/:token" element={<ResetPassword />} />
             </Routes>
           </Container>
         </Suspense>

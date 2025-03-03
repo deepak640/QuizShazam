@@ -5,10 +5,8 @@ import "../assets/css/profile.css";
 import Cookies from "js-cookie";
 import withAuth from "../auth/withAuth";
 import { useQuery } from "react-query";
-import LineChart from "./Linechart";
+import Barchart from "./BarChart";
 import { getProfile } from "../func/apiCalls.service";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
-import { Doughnut, Line } from "react-chartjs-2";
 const Profile = () => {
   const { token } = JSON.parse(Cookies.get("user"));
   const Navigate = useNavigate();
@@ -54,7 +52,7 @@ const Profile = () => {
       </div>
       <div className="quiz-chart">
         <h1>Quiz stats</h1>
-        <LineChart />
+        <Barchart />
       </div>
     </div>
   );

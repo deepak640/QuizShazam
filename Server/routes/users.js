@@ -39,7 +39,6 @@ const generationConfig = {
 
 
 
-
 router.get("/", function (req, res, next) {
   res.send("respond with a resource");
 });
@@ -147,7 +146,6 @@ router.post("/login/google", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
 
 
 // Get user's quiz results
@@ -377,4 +375,6 @@ Remember to maintain this persona and follow these instructions consistently in 
   }
 }
 );
+
+
 module.exports = router;

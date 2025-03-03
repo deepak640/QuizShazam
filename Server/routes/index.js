@@ -1,9 +1,37 @@
 var express = require("express");
 var router = express.Router();
-const Quiz = require("../model/quiz");
-const Question = require("../model/question");
-const userModel = require("../model/user");
-const Authentication = require("../middleware/auth");
+var Quiz = require("../model/quiz");
+var Question = require("../model/question");
+var userModel = require("../model/user");
+var Authentication = require("../middleware/auth");
+var jwt = require("jsonwebtoken");
+var SibApiV3Sdk = require("sib-api-v3-sdk");
+
+const sendEmail = async (toEmail, passwordLink) => {
+  try {
+    let defaultClient = SibApiV3Sdk.ApiClient.instance;
+    let apiKey = defaultClient.authentications["api-key"];
+    apiKey.apiKey = process.env.BREVO_API_KEY;
+
+    let apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+
+    let sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+    sendSmtpEmail.to = [{ email: toEmail }];
+    sendSmtpEmail.sender = { name: "Your App Name", email: "ayushdeepnegi@gmail.com" }; // Must be verified in Brevo
+
+    // **Use the Email Template**
+    sendSmtpEmail.templateId = 2; // Replace with your Brevo Template ID
+    sendSmtpEmail.params = {
+      password_link: passwordLink, // Matches the variable used in your template
+    };
+
+    let response = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log("Email sent successfully:", response);
+  } catch (error) {
+    console.error("Error sending email:", error);
+  }
+};
+
 /* GET home page. */
 router.get("/", function (req, res, next) {
   res.render("index", { title: "Express" });
@@ -107,4 +135,36 @@ router.get("/quiz/:id", async (req, res) => {
   }
 });
 
+
+router.post("/password", Authentication, async (req, res) => {
+  const { email } = req.body;
+  try {
+    const token = jwt.sign({ id: req.user.id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+    console.log("🚀 ~ router.post ~ password_link", process.env.JWT_SECRET, token);
+
+    const password_link = `${process.env.CLIENT_URL}/reset-password/${token}`;
+    console.log(password_link)
+    return res.json({ message: "Email sent successfully", link: password_link });
+  } catch (error) {
+    res.status(500).send({ message: "Error processing request", error });
+  }
+}
+);
+
+router.post("/reset-password", Authentication, async (req, res) => {
+  const { password } = req.body;
+
+  try {
+    const user = await userModel.findByIdAndUpdate(req.user.id, {
+      password: password,
+    });
+    if (!user) return res.status(404).send({ message: "User not found" });
+    return res.json({ message: "Password reset successfully!" })
+  }
+  catch (error) {
+    return res.status(400).send({ message: error.message });
+  }
+})
 module.exports = router;

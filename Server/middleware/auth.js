@@ -9,7 +9,7 @@ const Authentication = (req, res, next) => {
   if (token == null) return res.sendStatus(401);
 
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.sendStatus(403);
+    if (err) return res.status(403).send({ error: "Invalid Token" });
     console.log(user, "user");
     // Attach the user ID (converted back to ObjectId) to the request object
     req.user = { id: new mongoose.Types.ObjectId(user.id), role: user.role };

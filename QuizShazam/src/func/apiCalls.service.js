@@ -84,3 +84,12 @@ export const chat = async ({ values, token }) => {
   });
   return res.data;
 };
+
+export const resetPassword = async ({ values, token }) => {
+  const res = await axios.post(`${VITE_REACT_API_URL}/reset-password`, values, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  return res.data;
+}

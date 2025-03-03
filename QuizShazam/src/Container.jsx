@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 const Container = ({ children }) => {
   const { pathname } = useLocation();
   const [Visible, setVisible] = useState(null);
-  const headers = ["quiz", "login", "register"];
+  const headers = ["quiz", "login", "register", "reset-password"];
 
   useEffect(() => {
     setVisible(true);
