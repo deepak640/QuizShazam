@@ -4,19 +4,33 @@ import Loader from "../shared/Loader";
 import "../assets/css/profile.css";
 import Cookies from "js-cookie";
 import withAuth from "../auth/withAuth";
-import { useQuery } from "react-query";
+import { useMutation, useQuery } from "react-query";
 import Barchart from "./BarChart";
-import { getProfile } from "../func/apiCalls.service";
+import { message } from "antd";
+import { getProfile, resetPassword } from "../func/apiCalls.service";
 const Profile = () => {
   const { token } = JSON.parse(Cookies.get("user"));
   const Navigate = useNavigate();
+  const [messageApi, contextHolder] = message.useMessage();
   const { data, isLoading } = useQuery(["profile", { token }], getProfile);
+  const { mutate } = useMutation(resetPassword);
   // console.log("🚀 ~ Profile ~ data:", data)
   if (isLoading) return <Loader />;
   const { profile, quizzes } = data;
-  console.log("🚀 ~ Profile ~ quizzes:", quizzes);
+  const sendMail = () => {
+    mutate({ email: profile.email, token }, {
+      onSuccess: (data) => {
+        messageApi.success(data.message
+        );
+      },
+      onError: (error) => {
+        messageApi.error(error.response.data.error);
+      }
+    });
+  }
   return (
     <div className="profile-section">
+      {contextHolder}
       <div className="user-details">
         <div className="profile-field">
           <img src={profile.photoURL} alt="#" />
@@ -25,11 +39,13 @@ const Profile = () => {
             <p>{profile.email}</p>
           </div>
         </div>
-        <div className="password-field">
-          <label htmlFor="password">password</label>
-          <br />
-          <input type="password" id="password" name="password" />
-        </div>
+        {
+          profile.password &&
+          <div className="password-field">
+            <button onClick={sendMail}>
+              Set Password
+            </button>
+          </div>}
       </div>
       <div className="quiz-taken">
         <h3>Quiz taken</h3>

@@ -17,7 +17,7 @@ const sendEmail = async (toEmail, passwordLink) => {
 
     let sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
     sendSmtpEmail.to = [{ email: toEmail }];
-    sendSmtpEmail.sender = { name: "Your App Name", email: "ayushdeepnegi@gmail.com" }; // Must be verified in Brevo
+    sendSmtpEmail.sender = { name: "quizShazam", email: "ayushdeepnegi@gmail.com" }; // Must be verified in Brevo
 
     // **Use the Email Template**
     sendSmtpEmail.templateId = 2; // Replace with your Brevo Template ID
@@ -160,6 +160,7 @@ router.post("/reset-password", Authentication, async (req, res) => {
     const user = await userModel.findByIdAndUpdate(req.user.id, {
       password: password,
     });
+    sendEmail(user.email, "Password reset successfully!");
     if (!user) return res.status(404).send({ message: "User not found" });
     return res.json({ message: "Password reset successfully!" })
   }

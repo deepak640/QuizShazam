@@ -87,6 +87,17 @@
   outline: none;
 }
 
+.password-field button {
+  padding: clamp(8px, 1.5vw, 12px) clamp(15px, 2vw, 20px);
+  border: none;
+  border-radius: 8px;
+  background: #3498db;
+  color: white;
+  font-size: clamp(14px, 1.8vw, 16px);
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
 .quiz-taken {
   grid-column: span 1;
   background: white;
