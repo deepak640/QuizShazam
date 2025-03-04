@@ -40,7 +40,7 @@ const Profile = () => {
           </div>
         </div>
         {
-          profile.password &&
+          !profile.password &&
           <div className="password-field">
             <button onClick={sendMail}>
               Set Password
