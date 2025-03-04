@@ -85,8 +85,27 @@ export const chat = async ({ values, token }) => {
   return res.data;
 };
 
+export const mailPasswordLink = async ({ values, token }) => {
+  const res = await axios.post(`${VITE_REACT_API_URL}/mail-password`, values, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  return res.data;
+}
 export const resetPassword = async ({ values, token }) => {
+
   const res = await axios.post(`${VITE_REACT_API_URL}/reset-password`, values, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  return res.data;
+}
+export const userStats = async ({ queryKey }) => {
+  const [key, { token, obj }] = queryKey;
+  console.log("🚀 ~ userStats ~ obj", obj)
+  const res = await axios.get(`${VITE_REACT_API_URL}/users/total-quizMatrix?userid=${obj.userid}`, {
     headers: {
       Authorization: `Bearer ${token}`
     }

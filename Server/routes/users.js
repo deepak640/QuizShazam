@@ -232,7 +232,7 @@ router.get("/profile", Authentication, async (req, res) => {
   }
 });
 
-router.get("/total-quizMatrix", async (req, res) => {
+router.get("/total-quizMatrix", Authentication, async (req, res) => {
   try {
     let pipeline = []
     let matchObj = {}
@@ -274,6 +274,7 @@ router.get("/total-quizMatrix", async (req, res) => {
     )
 
     const quizzes = await Response.aggregate(pipeline);
+    console.log(quizzes)
     res.status(200).send(quizzes);
   } catch (error) {
     console.log(error)

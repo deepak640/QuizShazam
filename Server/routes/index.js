@@ -6,7 +6,7 @@ var userModel = require("../model/user");
 var Authentication = require("../middleware/auth");
 var jwt = require("jsonwebtoken");
 var SibApiV3Sdk = require("sib-api-v3-sdk");
-
+var bcrypt = require("bcryptjs");
 const sendEmail = async (toEmail, passwordLink) => {
   try {
     let defaultClient = SibApiV3Sdk.ApiClient.instance;
@@ -136,16 +136,15 @@ router.get("/quiz/:id", async (req, res) => {
 });
 
 
-router.post("/password", Authentication, async (req, res) => {
+router.post("/mail-password", Authentication, async (req, res) => {
   const { email } = req.body;
   try {
     const token = jwt.sign({ id: req.user.id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
-    console.log("🚀 ~ router.post ~ password_link", process.env.JWT_SECRET, token);
 
     const password_link = `${process.env.CLIENT_URL}/reset-password/${token}`;
-    console.log(password_link)
+    sendEmail(email, password_link);
     return res.json({ message: "Email sent successfully", link: password_link });
   } catch (error) {
     res.status(500).send({ message: "Error processing request", error });
@@ -158,9 +157,8 @@ router.post("/reset-password", Authentication, async (req, res) => {
 
   try {
     const user = await userModel.findByIdAndUpdate(req.user.id, {
-      password: password,
+      password: bcrypt.hashSync(password, 10),
     });
-    sendEmail(user.email, "Password reset successfully!");
     if (!user) return res.status(404).send({ message: "User not found" });
     return res.json({ message: "Password reset successfully!" })
   }

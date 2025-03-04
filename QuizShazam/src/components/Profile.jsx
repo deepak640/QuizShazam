@@ -7,18 +7,25 @@ import withAuth from "../auth/withAuth";
 import { useMutation, useQuery } from "react-query";
 import Barchart from "./BarChart";
 import { message } from "antd";
-import { getProfile, resetPassword } from "../func/apiCalls.service";
+import { getProfile, mailPasswordLink, userStats } from "../func/apiCalls.service";
 const Profile = () => {
   const { token } = JSON.parse(Cookies.get("user"));
   const Navigate = useNavigate();
   const [messageApi, contextHolder] = message.useMessage();
-  const { data, isLoading } = useQuery(["profile", { token }], getProfile);
-  const { mutate } = useMutation(resetPassword);
-  // console.log("🚀 ~ Profile ~ data:", data)
+  const { data: userData, isLoading } = useQuery(["profile", { token }], getProfile);
+  const { mutate } = useMutation(mailPasswordLink);
+  const obj = {
+    userid: userData?.profile._id
+  }
+  const { data: stats } = useQuery(["stats", { token, obj }], userStats);
+  console.log(stats)
   if (isLoading) return <Loader />;
-  const { profile, quizzes } = data;
+  const { profile, quizzes } = userData;
   const sendMail = () => {
-    mutate({ email: profile.email, token }, {
+    const obj = {
+      email: profile.email,
+    }
+    mutate({ values: obj, token }, {
       onSuccess: (data) => {
         messageApi.success(data.message
         );
@@ -68,7 +75,7 @@ const Profile = () => {
       </div>
       <div className="quiz-chart">
         <h1>Quiz stats</h1>
-        <Barchart />
+        <Barchart userStats={stats || []} />
       </div>
     </div>
   );

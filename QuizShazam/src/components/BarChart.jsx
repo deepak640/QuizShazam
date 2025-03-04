@@ -4,40 +4,41 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 // Register the required components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-const BarChart = () => {
+const BarChart = ({ userStats }) => {
+  console.log(userStats, "userStats");
   // Sample quiz data (you'll replace this with actual data from your Profile component)
-  const quizData = [
-    {
-      "_id": "66af6a689118a99ac983323f",
-      "score": 2,
-      "title": "History Quiz"
-    },
-    // Add more quiz objects as needed for testing
-    {
-      "_id": "66af6a689118a99ac9833240",
-      "score": 5,
-      "title": "Science Quiz"
-    },
-    {
-      "_id": "66af6a689118a99ac9833241",
-      "score": 8,
-      "title": "Math Quiz"
-    }
-  ];
+  // const quizData = [
+  //   {
+  //     "_id": "66af6a689118a99ac983323f",
+  //     "score": 2,
+  //     "title": "History Quiz"
+  //   },
+  //   // Add more quiz objects as needed for testing
+  //   {
+  //     "_id": "66af6a689118a99ac9833240",
+  //     "score": 5,
+  //     "title": "Science Quiz"
+  //   },
+  //   {
+  //     "_id": "66af6a689118a99ac9833241",
+  //     "score": 8,
+  //     "title": "Math Quiz"
+  //   }
+  // ];
 
   const chartData = {
-    labels: quizData.map(quiz => quiz.title.slice(0, 10) + "..."), // Truncate long titles
+    labels: userStats.map(quiz => quiz.title.slice(0, 10) + "..."), // Truncate long titles
     datasets: [
       {
         label: "Quiz Scores",
-        data: quizData.map(quiz => quiz.score || 0), // Use raw scores
-        backgroundColor: quizData.map(quiz => {
+        data: userStats.map(quiz => quiz.score || 0), // Use raw scores
+        backgroundColor: userStats.map(quiz => {
           // Dynamic colors based on score (optional enhancement)
           if (quiz.score >= 7) return "rgba(46, 204, 113, 0.6)"; // Green for high scores
           if (quiz.score >= 4) return "rgba(52, 152, 219, 0.6)"; // Blue for medium
           return "rgba(231, 76, 60, 0.6)"; // Red for low scores
         }),
-        borderColor: quizData.map(quiz => {
+        borderColor: userStats.map(quiz => {
           if (quiz.score >= 7) return "rgba(46, 204, 113, 1)";
           if (quiz.score >= 4) return "rgba(52, 152, 219, 1)";
           return "rgba(231, 76, 60, 1)";
@@ -45,7 +46,7 @@ const BarChart = () => {
         borderWidth: 1,
         borderRadius: 2,
         barThickness: 60,
-        hoverBackgroundColor: quizData.map(quiz => {
+        hoverBackgroundColor: userStats.map(quiz => {
           if (quiz.score >= 7) return "rgba(46, 204, 113, 0.8)";
           if (quiz.score >= 4) return "rgba(52, 152, 219, 0.8)";
           return "rgba(231, 76, 60, 0.8)";
@@ -84,7 +85,7 @@ const BarChart = () => {
       tooltip: {
         callbacks: {
           label: (context) => {
-            const quiz = quizData[context.dataIndex];
+            const quiz = userStats[context.dataIndex];
             return `${quiz.title}: ${context.raw} points`;
           },
         },
