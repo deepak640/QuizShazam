@@ -65,11 +65,9 @@ export const userRegister = async (values) => {
   return res.data;
 };
 
-export const submitQuiz = async ({ values, config, token }) => {
+export const submitQuiz = async ({ values, token }) => {
   const res = await axios.post(`${VITE_REACT_API_URL}/users/submit-quiz`, values, {
-    ...config,
     headers: {
-      ...config.headers,
       Authorization: `Bearer ${token}`
     }
   });
