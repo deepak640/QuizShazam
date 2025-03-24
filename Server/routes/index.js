@@ -166,4 +166,71 @@ router.post("/reset-password", Authentication, async (req, res) => {
     return res.status(400).send({ message: error.message });
   }
 })
+
+router.get("/All-Stats", async (req, res) => {
+  try {
+    // if (req.user.role !== "admin") return res.status(401).send({ message: "Unauthorized access" });
+    let pipeline = []
+    pipeline.push(
+      { $unwind: "$quizzesTaken" }, // Flatten the quizzesTaken array
+      { $group: { _id: null, totalQuizzes: { $sum: 1 } } } // Count total quizzes
+    );
+    const result = await userModel.aggregate(pipeline);
+
+    const chart = await userModel.aggregate([
+      {
+        $unwind: "$quizzesTaken", // Flatten quizzesTaken array
+      },
+      {
+        $group: {
+          _id: "$quizzesTaken", // Group by quiz ID
+          count: { $sum: 1 }, // Count occurrences of each quiz
+        },
+      },
+      {
+        $lookup: {
+          from: "quizzes", // Join with Quiz collection
+          localField: "_id",
+          foreignField: "_id",
+          as: "quizDetails",
+        },
+      },
+      {
+        $unwind: "$quizDetails", // Unwind the quiz details
+      },
+      {
+        $project: {
+          _id: 0,
+          title: "$quizDetails.title", // Extract quiz title
+          count: 1, // Keep count
+        },
+      },
+      {
+        $sort: { count: -1 }, // Sort by most taken quiz
+      },
+    ]);
+
+    // Format data for chart
+    const labels = chart.map((quiz) => quiz.title);
+    const data = chart.map((quiz) => quiz.count);
+
+    const chartData = {
+      labels,
+      datasets: [
+        {
+          label: "Quiz Categories",
+          data,
+        },
+      ],
+    };
+
+
+    return res.status(200).send({ total: result[0].totalQuizzes, byCategory: chartData });
+  } catch (error) {
+    console.log("🚀 ~ router.get ~ error:", error);
+    res.status(500).send({ message: "Error retrieving users", error });
+  }
+}
+);
+
 module.exports = router;
