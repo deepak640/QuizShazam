@@ -1,30 +1,16 @@
-var Question = require("../model/question");
-var Response = require("../model/response");
-var multer = require("multer");
-var express = require("express");
-var router = express.Router();
+const Quiz = require("../model/quiz");
+const User = require("../model/user");
 var bcrypt = require("bcryptjs");
 var jwt = require("jsonwebtoken");
-var Authentication = require("../middleware/auth");
-var UserModel = require("../model/user");
-const { BlobServiceClient } = require("@azure/storage-blob");
-const { default: mongoose } = require("mongoose");
-
-const Quiz = require("../model/quiz");
-require("dotenv").config();
-
+var Question = require("../model/question");
+var Response = require("../model/response");
 const {
   GoogleGenerativeAI,
 } = require("@google/generative-ai");
+const { BlobServiceClient } = require("@azure/storage-blob");
 
 
-const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_URI);
-const containerClient = blobServiceClient.getContainerClient("uploads"); // Replace with your container name
-
-// Multer setup to handle file uploads
-const storage = multer.memoryStorage(); // Store files in memory temporarily
-const upload = multer({ storage: storage }).single("file"); // Only accept a s
-
+// Func
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -36,19 +22,22 @@ const generationConfig = {
   maxOutputTokens: 8192,
   responseMimeType: "text/plain",
 };
+const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_URI);
+const containerClient = blobServiceClient.getContainerClient("uploads"); // Replace with your container name
 
 
 
-router.get("/", function (req, res, next) {
+
+const HomeRoute = async (req, res, next) => {
   res.send("respond with a resource");
-});
+}
 
-router.post("/register", upload, async (req, res) => {
+const register = async (req, res) => {
   const { username, email, password } = req.body;
   const photo = req.file;
 
   try {
-    if (await UserModel.findOne({ email })) {
+    if (await User.findOne({ email })) {
       return res.status(401).json({ error: "User already exists" });
     }
 
@@ -64,7 +53,7 @@ router.post("/register", upload, async (req, res) => {
 
     }
 
-    const newUser = new UserModel({
+    const newUser = new User({
       username,
       email,
       password: password && bcrypt.hashSync(password, 10),
@@ -81,13 +70,13 @@ router.post("/register", upload, async (req, res) => {
     console.log("🚀 ~ router.post ~ error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
-});
+}
 
-router.post("/login", async (req, res) => {
+const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const user = await UserModel.findOne({ email });
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ error: "User not found" });
     }
@@ -113,13 +102,13 @@ router.post("/login", async (req, res) => {
     console.error("🚀 ~ router.post ~ error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
-});
+}
 
-router.post("/login/google", async (req, res) => {
+const googleLogin = async (req, res) => {
   const { email, username, photoURL } = req.body;
 
   try {
-    const user = await UserModel.findOne({ email });
+    const user = await User.findOne({ email });
 
     if (user) {
       const { photoURL } = user;
@@ -129,7 +118,7 @@ router.post("/login/google", async (req, res) => {
       return res.status(200).json({ token, photoURL });
     }
 
-    const newUser = new UserModel({
+    const newUser = new User({
       username,
       email,
       photoURL,
@@ -145,11 +134,9 @@ router.post("/login/google", async (req, res) => {
     console.error("🚀 ~ router.post ~ error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
-});
+}
 
-
-// Get user's quiz results
-router.get("/results/:id", Authentication, async (req, res) => {
+const userResult = async (req, res) => {
   const userId = req.user.id;
   const { id } = req.params;
   try {
@@ -160,9 +147,9 @@ router.get("/results/:id", Authentication, async (req, res) => {
   } catch (error) {
     res.status(500).send({ message: "Error retrieving results", error });
   }
-});
+}
 
-router.get("/quiz/:id/questions", async (req, res) => {
+const userQuestion = async (req, res) => {
   const { id } = req.params;
   res.set("Cache-Control", "no-store");
   try {
@@ -175,10 +162,9 @@ router.get("/quiz/:id/questions", async (req, res) => {
   } catch (error) {
     res.status(500).send({ message: "Error retrieving questions", error });
   }
-});
+}
 
-// Submit Quiz
-router.post("/submit-quiz", Authentication, async (req, res) => {
+const quizSubmission = async (req, res) => {
   const { quizId, answers } = req.body;
   const userId = req.user.id;
   try {
@@ -206,20 +192,20 @@ router.post("/submit-quiz", Authentication, async (req, res) => {
       score,
     });
     await response.save();
-    await UserModel.findByIdAndUpdate(userId, {
+    await User.findByIdAndUpdate(userId, {
       $push: { quizzesTaken: quizId },
     });
     res.status(201).send({ message: "Quiz submitted successfully" });
   } catch (error) {
     res.status(500).send({ message: "Error submitting quiz", error });
   }
-});
+}
 
-router.get("/profile", Authentication, async (req, res) => {
+const userProfile = async (req, res) => {
   const userID = req.user.id;
 
   try {
-    const profile = await UserModel.findById(userID);
+    const profile = await User.findById(userID);
     console.log("🚀 ~ router.get ~ profile:", profile)
     let quizzes = [];
     for (let quiz of profile.quizzesTaken) {
@@ -230,9 +216,9 @@ router.get("/profile", Authentication, async (req, res) => {
   } catch (error) {
     res.status(500).send({ message: "Comeback later", error });
   }
-});
+}
 
-router.get("/total-quizMatrix", Authentication, async (req, res) => {
+const quizMatrix = async (req, res) => {
   try {
     let pipeline = []
     let matchObj = {}
@@ -280,9 +266,9 @@ router.get("/total-quizMatrix", Authentication, async (req, res) => {
     console.log(error)
     res.status(500).send({ message: "Error retrieving quizzes", error });
   }
-});
+}
 
-router.post("/chat", async (req, res) => {
+const aiChat = async (req, res) => {
   const { message } = req.body;
   let pipeline = []
   pipeline.push(
@@ -375,7 +361,17 @@ Remember to maintain this persona and follow these instructions consistently in 
     res.status(500).send({ message: "Error processing request", error });
   }
 }
-);
 
 
-module.exports = router;
+module.exports = {
+  HomeRoute,
+  register,
+  login,
+  quizSubmission,
+  userProfile,
+  quizMatrix,
+  aiChat,
+  userResult,
+  userQuestion,
+  googleLogin
+}

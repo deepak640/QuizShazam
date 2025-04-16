@@ -1,12 +1,10 @@
-var express = require("express");
-var router = express.Router();
 var Quiz = require("../model/quiz");
-var Question = require("../model/question");
-var userModel = require("../model/user");
-var Authentication = require("../middleware/auth");
 var jwt = require("jsonwebtoken");
 var SibApiV3Sdk = require("sib-api-v3-sdk");
 var bcrypt = require("bcryptjs");
+var User = require("../model/user");
+var Question = require("../model/question");
+
 const sendEmail = async (toEmail, passwordLink) => {
   try {
     let defaultClient = SibApiV3Sdk.ApiClient.instance;
@@ -32,97 +30,17 @@ const sendEmail = async (toEmail, passwordLink) => {
   }
 };
 
-/* GET home page. */
-router.get("/", function (req, res, next) {
-  res.render("index", { title: "Express" });
-});
-
-router.post("/create-quiz", Authentication, async (req, res) => {
-  const array = req.body;
+const getAllusers = async (req, res) => {
   try {
-    const quizzes = await Promise.all(
-      array.map(async ({ title, description, questions, authorId }) => {
-        const quiz = new Quiz({ title, description, author: authorId });
-        await quiz.save();
-
-        await Promise.all(
-          questions
-            .filter((q) => {
-              return q.questionText != undefined;
-            })
-            .map(async (q) => {
-              const question = new Question({
-                questionText: q.questionText,
-                options: q.options,
-                quiz: quiz._id,
-              });
-              await question.save();
-              quiz.questions.push(question);
-            })
-        );
-
-        await quiz.save();
-        return quiz;
-      })
-    );
-
-    res.status(201).send({ message: "Quiz created successfully", quizzes });
-  } catch (error) {
-    console.log("🚀 ~ router.post ~ error:", error);
-    res.status(500).send({ message: "Error creating quiz", error });
-  }
-});
-
-// Get all quizzes
-router.get("/quizzes", Authentication, async (req, res) => {
-  try {
-    const { id } = req.user;
-    console.log("🚀 ~ router.get ~ id:", id);
-    const quizzes = await Quiz.find().select("title description questions");
-    const quizzesTaken = await userModel.findById(id).select("quizzesTaken");
-    res.status(200).send({ quizzes, quizzesTaken });
-  } catch (error) {
-    console.log("🚀 ~ router.get ~ error:", error)
-    res.status(500).send({ message: "Error retrieving quizzes", error });
-  }
-});
-
-router.get("/getAllQuizzes", async (req, res) => {
-  try {
-    const quizzes = await Quiz.find();
-    res.status(200).send(quizzes);
-  } catch (error) {
-    console.log("🚀 ~ router.get ~ error:", error)
-    res.status(500).send({ message: "Error retrieving quizzes", error });
-  }
-});
-
-router.get("/protected", Authentication, async (req, res) => {
-  try {
-    // Use the user ID from the request object (set by the middleware)
-    const user = await userModel.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    res.json(user);
-  } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// Get all users
-router.get("/users", async (req, res) => {
-  try {
-    const users = await userModel.find();
+    const users = await User.find();
     res.status(200).send(users);
   } catch (error) {
     console.log("🚀 ~ router.get ~ error:", error);
     res.status(500).send({ message: "Error retrieving users", error });
   }
-});
+}
 
-// Get quiz by ID
-router.get("/quiz/:id", async (req, res) => {
+const getById = async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -133,10 +51,9 @@ router.get("/quiz/:id", async (req, res) => {
   } catch (error) {
     res.status(500).send({ message: "Error retrieving quiz", error });
   }
-});
+}
 
-
-router.post("/mail-password", Authentication, async (req, res) => {
+const sendResetLink = async (req, res) => {
   const { email } = req.body;
   try {
     const token = jwt.sign({ id: req.user.id }, process.env.JWT_SECRET, {
@@ -150,13 +67,12 @@ router.post("/mail-password", Authentication, async (req, res) => {
     res.status(500).send({ message: "Error processing request", error });
   }
 }
-);
 
-router.post("/reset-password", Authentication, async (req, res) => {
+const resetPassword = async (req, res) => {
   const { password } = req.body;
 
   try {
-    const user = await userModel.findByIdAndUpdate(req.user.id, {
+    const user = await User.findByIdAndUpdate(req.user.id, {
       password: bcrypt.hashSync(password, 10),
     });
     if (!user) return res.status(404).send({ message: "User not found" });
@@ -165,9 +81,9 @@ router.post("/reset-password", Authentication, async (req, res) => {
   catch (error) {
     return res.status(400).send({ message: error.message });
   }
-})
+}
 
-router.get("/All-Stats", async (req, res) => {
+const getUserStats = async (req, res) => {
   try {
     // if (req.user.role !== "admin") return res.status(401).send({ message: "Unauthorized access" });
     let pipeline = []
@@ -175,9 +91,9 @@ router.get("/All-Stats", async (req, res) => {
       { $unwind: "$quizzesTaken" }, // Flatten the quizzesTaken array
       { $group: { _id: null, totalQuizzes: { $sum: 1 } } } // Count total quizzes
     );
-    const result = await userModel.aggregate(pipeline);
+    const result = await User.aggregate(pipeline);
 
-    const chart = await userModel.aggregate([
+    const chart = await User.aggregate([
       {
         $unwind: "$quizzesTaken", // Flatten quizzesTaken array
       },
@@ -231,6 +147,48 @@ router.get("/All-Stats", async (req, res) => {
     res.status(500).send({ message: "Error retrieving users", error });
   }
 }
-);
 
-module.exports = router;
+const createSession = async (req, res) => {
+  const array = req.body;
+  console.log(array)
+  try {
+    // const quizzes = await Promise.all(
+    //   array.map(async ({ title, description, questions, authorId }) => {
+    //     const quiz = new Quiz({ title, description, author: authorId });
+    //     await quiz.save();
+
+    //     await Promise.all(
+    //       questions
+    //         .filter((q) => {
+    //           return q.questionText != undefined;
+    //         })
+    //         .map(async (q) => {
+    //           const question = new Question({
+    //             questionText: q.questionText,
+    //             options: q.options,
+    //             quiz: quiz._id,
+    //           });
+    //           await question.save();
+    //           quiz.questions.push(question);
+    //         })
+    //     );
+
+    //     await quiz.save();
+    //     return quiz;
+    //   })
+    // );
+
+    res.status(201).send({ message: "Quiz created successfully" });
+  } catch (error) {
+    console.log("🚀 ~ router.post ~ error:", error);
+  }
+}
+
+module.exports = {
+  getAllusers,
+  getById,
+  createSession,
+  getUserStats,
+  sendResetLink,
+  resetPassword
+}
