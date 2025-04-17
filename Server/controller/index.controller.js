@@ -149,39 +149,60 @@ const getUserStats = async (req, res) => {
 }
 
 const createSession = async (req, res) => {
-  const array = req.body;
-  console.log(array)
+  const { quiz, session } = req.body;
   try {
-    // const quizzes = await Promise.all(
-    //   array.map(async ({ title, description, questions, authorId }) => {
-    //     const quiz = new Quiz({ title, description, author: authorId });
-    //     await quiz.save();
+    console.log(session, "session")
+    const quizzes = await Promise.all(
+      quiz.map(async ({ title, description, questions, authorId }) => {
+        const quiz = new Quiz({ title, description, author: authorId });
+        await quiz.save();
 
-    //     await Promise.all(
-    //       questions
-    //         .filter((q) => {
-    //           return q.questionText != undefined;
-    //         })
-    //         .map(async (q) => {
-    //           const question = new Question({
-    //             questionText: q.questionText,
-    //             options: q.options,
-    //             quiz: quiz._id,
-    //           });
-    //           await question.save();
-    //           quiz.questions.push(question);
-    //         })
-    //     );
-
-    //     await quiz.save();
-    //     return quiz;
-    //   })
-    // );
-
+        await Promise.all(
+          questions
+            .filter((q) => {
+              return q.questionText != undefined;
+            })
+            .map(async (q) => {
+              const question = new Question({
+                questionText: q.questionText,
+                options: q.options,
+                quiz: quiz._id,
+              });
+              await question.save();
+              quiz.questions.push(question);
+            })
+        );
+        quiz.expiresAt = new Date(Date.now() + session * 60 * 1000); // Set expiration time in minutes
+        await quiz.save();
+        return quiz;
+      })
+    );
     res.status(201).send({ message: "Quiz created successfully" });
   } catch (error) {
     console.log("🚀 ~ router.post ~ error:", error);
   }
+}
+
+const getAllsession = async (req, res) => {
+  let pipeline = []
+  let matchObj = {}
+  matchObj.expiresAt = { $exists: true }
+
+  pipeline.push(
+    {
+      $match: matchObj,
+    },
+    {
+      $project: {
+        title: 1,
+        description: 1,
+        expiresAt: 1,
+      }
+    }
+  )
+
+  const Quizez = await Quiz.aggregate(pipeline);
+  res.json(Quizez)
 }
 
 module.exports = {
@@ -189,6 +210,7 @@ module.exports = {
   getById,
   createSession,
   getUserStats,
+  getAllsession,
   sendResetLink,
   resetPassword
 }
