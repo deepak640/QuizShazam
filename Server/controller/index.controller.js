@@ -196,6 +196,7 @@ const getAllsession = async (req, res) => {
       $project: {
         title: 1,
         description: 1,
+        createdAt: 1,
         expiresAt: 1,
       }
     }

@@ -26,8 +26,6 @@ const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZU
 const containerClient = blobServiceClient.getContainerClient("uploads"); // Replace with your container name
 
 
-
-
 const HomeRoute = async (req, res, next) => {
   res.send("respond with a resource");
 }

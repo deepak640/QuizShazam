@@ -5,7 +5,7 @@ var Authentication = require("../middleware/auth");
 
 require("dotenv").config();
 
-const { HomeRoute, register, login, googleLogin, userResult, quizSubmission, userProfile, quizMatrix, aiChat } = require("../controller/user.controller");
+const { HomeRoute, register, login, googleLogin, userResult, quizSubmission, userProfile, quizMatrix, aiChat, userQuestion } = require("../controller/user.controller");
 
 
 // Multer setup to handle file uploads
@@ -27,7 +27,7 @@ router.post("/login/google", googleLogin);
 // Get user's quiz results
 router.get("/results/:id", Authentication, userResult);
 
-router.get("/quiz/:id/questions",);
+router.get("/quiz/:id/questions", userQuestion);
 
 // Submit Quiz
 router.post("/submit-quiz", Authentication, quizSubmission);
