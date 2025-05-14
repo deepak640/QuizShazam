@@ -4,6 +4,8 @@ var SibApiV3Sdk = require("sib-api-v3-sdk");
 var bcrypt = require("bcryptjs");
 var User = require("../model/user");
 var Question = require("../model/question");
+var userModel = require("../model/user");
+const { default: mongoose } = require("mongoose");
 
 const sendEmail = async (toEmail, passwordLink) => {
   try {
@@ -19,9 +21,12 @@ const sendEmail = async (toEmail, passwordLink) => {
 
     // **Use the Email Template**
     sendSmtpEmail.templateId = 2; // Replace with your Brevo Template ID
-    sendSmtpEmail.params = {
-      password_link: passwordLink, // Matches the variable used in your template
-    };
+
+    if (passwordLink) {
+      sendSmtpEmail.params = {
+        password_link: passwordLink, // Matches the variable used in your template
+      };
+    }
 
     let response = await apiInstance.sendTransacEmail(sendSmtpEmail);
     console.log("Email sent successfully:", response);
@@ -32,7 +37,15 @@ const sendEmail = async (toEmail, passwordLink) => {
 
 const getAllusers = async (req, res) => {
   try {
-    const users = await User.find();
+    let pipeline = []
+    let matchObj = {}
+    matchObj.role = { $ne: "admin" }
+    pipeline.push(
+      {
+        $match: matchObj,
+      },
+    )
+    const users = await User.aggregate(pipeline).exec();
     res.status(200).send(users);
   } catch (error) {
     console.log("🚀 ~ router.get ~ error:", error);
@@ -172,7 +185,7 @@ const createSession = async (req, res) => {
               quiz.questions.push(question);
             })
         );
-        quiz.expiresAt = new Date(Date.now() + session * 60 * 1000); // Set expiration time in minutes
+        quiz.expiresAt = new Date(Date.now() + session * 60 * 1000);
         await quiz.save();
         return quiz;
       })
@@ -206,10 +219,53 @@ const getAllsession = async (req, res) => {
   res.json(Quizez)
 }
 
+const getAllQuizzes = async (req, res) => {
+  try {
+    const { id } = req.user;
+    let matchObj = {};
+    matchObj.expiresAt = { $exists: false };
+    // Use aggregation pipeline to get quizzes with selected fields
+    const quizzes = await Quiz.aggregate([
+      {
+        $match: matchObj
+      },
+      {
+        $project: {
+          title: 1,
+          description: 1,
+          questions: 1
+        }
+      }
+    ]);
+
+    // Get quizzesTaken for the user
+    const quizzesTakenResult = await userModel.aggregate([
+      { $match: { _id: new mongoose.Types.ObjectId(id) } },
+      { $project: { quizzesTaken: 1 } }
+    ]);
+    const quizzesTaken = quizzesTakenResult[0] || [];
+
+    res.status(200).send({ quizzes: quizzes, quizzesTaken });
+  } catch (error) {
+    console.log("🚀 ~ router.get ~ error:", error)
+    res.status(500).send({ message: "Error retrieving quizzes", error });
+  }
+}
+
+const shareQuiz = async (req, res) => {
+  if (req.user.role !== "admin") return res.status(401).send({ message: "Unauthorized access" });
+  // console.log(req.body, "req.body")
+  const { users, message } = req.body;
+  console.log(users, message, "users")
+
+  res.status(200).send({ message: "Quiz shared successfully" })
+}
 module.exports = {
   getAllusers,
   getById,
+  getAllQuizzes,
   createSession,
+  shareQuiz,
   getUserStats,
   getAllsession,
   sendResetLink,

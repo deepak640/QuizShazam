@@ -4,7 +4,7 @@ var Quiz = require("../model/quiz");
 var Question = require("../model/question");
 var userModel = require("../model/user");
 var Authentication = require("../middleware/auth");
-const { getAllusers, getById, sendResetLink, resetPassword, getUserStats, createSession, getAllsession } = require("../controller/index.controller");
+const { getAllusers, getById, sendResetLink, resetPassword, getUserStats, createSession, getAllsession, getAllQuizzes } = require("../controller/index.controller");
 
 /* GET home page. */
 router.get("/", function (req, res, next) {
@@ -48,18 +48,7 @@ router.post("/create-quiz", Authentication, async (req, res) => {
 });
 
 // Get all quizzes
-router.get("/quizzes", Authentication, async (req, res) => {
-  try {
-    const { id } = req.user;
-    console.log("🚀 ~ router.get ~ id:", id);
-    const quizzes = await Quiz.find().select("title description questions");
-    const quizzesTaken = await userModel.findById(id).select("quizzesTaken");
-    res.status(200).send({ quizzes, quizzesTaken });
-  } catch (error) {
-    console.log("🚀 ~ router.get ~ error:", error)
-    res.status(500).send({ message: "Error retrieving quizzes", error });
-  }
-});
+router.get("/quizzes", Authentication, getAllQuizzes);
 
 router.get("/getAllQuizzes", async (req, res) => {
   try {
