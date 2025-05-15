@@ -266,10 +266,10 @@ const shareQuiz = async (req, res) => {
   try {
     const { users, message, quizId } = req.body;
     console.log(quizId, "quizId")
-    // await Promise.all(
-    //   await users.map(async (mail) => {
-    //     await sendEmail(mail, `${process.env.CLIENT_URL}/dashboard/quiz/${quizId}`, type = "Share");
-    //   }))
+    await Promise.all(
+      await users.map(async (mail) => {
+        await sendEmail(mail, `${process.env.CLIENT_URL}/dashboard/quiz/${quizId}`, type = "Share");
+      }))
     res.json({ message: "Email sent successfully" })
   } catch (error) {
     console.log("🚀 ~ router.get ~ error:", error)
