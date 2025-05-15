@@ -7,7 +7,7 @@ var Question = require("../model/question");
 var userModel = require("../model/user");
 const { default: mongoose } = require("mongoose");
 
-const sendEmail = async (toEmail, passwordLink) => {
+const sendEmail = async (toEmail, link, type) => {
   try {
     let defaultClient = SibApiV3Sdk.ApiClient.instance;
     let apiKey = defaultClient.authentications["api-key"];
@@ -20,12 +20,19 @@ const sendEmail = async (toEmail, passwordLink) => {
     sendSmtpEmail.sender = { name: "quizShazam", email: "ayushdeepnegi@gmail.com" }; // Must be verified in Brevo
 
     // **Use the Email Template**
-    sendSmtpEmail.templateId = 2; // Replace with your Brevo Template ID
+    if (type === 'password_reset') {
+      sendSmtpEmail.templateId = 2; // Replace with your Brevo Template ID
 
-    if (passwordLink) {
       sendSmtpEmail.params = {
-        password_link: passwordLink, // Matches the variable used in your template
+        password_link: type, // Matches the variable used in your template
       };
+    }
+    if (type === "Share") {
+      sendSmtpEmail.templateId = 3; // Replace with your Brevo Template ID
+      sendSmtpEmail.params = {
+        share_link: link, // Matches the variable used in your template
+      };
+
     }
 
     let response = await apiInstance.sendTransacEmail(sendSmtpEmail);
@@ -74,7 +81,7 @@ const sendResetLink = async (req, res) => {
     });
 
     const password_link = `${process.env.CLIENT_URL}/reset-password/${token}`;
-    sendEmail(email, password_link);
+    sendEmail(email, password_link, type = "password_reset");
     return res.json({ message: "Email sent successfully", link: password_link });
   } catch (error) {
     res.status(500).send({ message: "Error processing request", error });
@@ -210,6 +217,7 @@ const getAllsession = async (req, res) => {
         title: 1,
         description: 1,
         createdAt: 1,
+        _id: 1,
         expiresAt: 1,
       }
     }
@@ -255,11 +263,20 @@ const getAllQuizzes = async (req, res) => {
 const shareQuiz = async (req, res) => {
   if (req.user.role !== "admin") return res.status(401).send({ message: "Unauthorized access" });
   // console.log(req.body, "req.body")
-  const { users, message } = req.body;
-  console.log(users, message, "users")
-
-  res.status(200).send({ message: "Quiz shared successfully" })
+  try {
+    const { users, message, quizId } = req.body;
+    console.log(quizId, "quizId")
+    await Promise.all(
+      await users.map(async (mail) => {
+        await sendEmail(mail, `${process.env.CLIENT_URL}/dashboard/quiz/${quizId}`, type = "Share");
+      }))
+    res.json({ message: "Email sent successfully" })
+  } catch (error) {
+    console.log("🚀 ~ router.get ~ error:", error)
+    res.status(500).send({ message: "Error retrieving quizzes", error });
+  }
 }
+
 module.exports = {
   getAllusers,
   getById,

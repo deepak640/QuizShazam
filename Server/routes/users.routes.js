@@ -13,8 +13,6 @@ const storage = multer.memoryStorage(); // Store files in memory temporarily
 const upload = multer({ storage: storage }).single("file"); // Only accept a s
 
 
-
-
 router.get("/", HomeRoute);
 
 router.post("/register", upload, register);

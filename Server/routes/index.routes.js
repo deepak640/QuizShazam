@@ -4,7 +4,7 @@ var Quiz = require("../model/quiz");
 var Question = require("../model/question");
 var userModel = require("../model/user");
 var Authentication = require("../middleware/auth");
-const { getAllusers, getById, sendResetLink, resetPassword, getUserStats, createSession, getAllsession, getAllQuizzes } = require("../controller/index.controller");
+const { getAllusers, getById, sendResetLink, resetPassword, getUserStats, createSession, getAllsession, getAllQuizzes, shareQuiz } = require("../controller/index.controller");
 
 /* GET home page. */
 router.get("/", function (req, res, next) {
@@ -85,6 +85,8 @@ router.post("/mail-password", Authentication, sendResetLink);
 router.post("/reset-password", Authentication, resetPassword)
 
 router.get("/All-Stats", getUserStats);
+
+router.post("/share-quiz",Authentication,shareQuiz)
 
 router.post("/create-assessment", createSession)
 
