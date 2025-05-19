@@ -13,13 +13,14 @@ const Dashboard = () => {
   const { data, isLoading } = useQuery(["quizzes", { token }], getQuizzes);
   if (isLoading) return <Loader />;
   const { quizzes, quizzesTaken } = data;
+  console.log(quizzes, quizzesTaken);
   if (quizzes.length == 0) return <Lottie animationData={dataNotFound} id="lottie-center" />;
   return (
     <div>
       <div className="quiz-cards">
         {quizzes &&
           quizzes.map((data, index) => {
-            const isTaken = quizzesTaken?.includes(data._id);
+            const isTaken = quizzesTaken?.quizzesTaken.includes(data._id);
             return (
               <div
                 className="cards"
