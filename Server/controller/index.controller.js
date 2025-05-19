@@ -24,7 +24,7 @@ const sendEmail = async (toEmail, link, type) => {
       sendSmtpEmail.templateId = 2; // Replace with your Brevo Template ID
 
       sendSmtpEmail.params = {
-        password_link: type, // Matches the variable used in your template
+        password_link: link, // Matches the variable used in your template
       };
     }
     if (type === "Share") {
