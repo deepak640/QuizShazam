@@ -19,7 +19,7 @@ const Dashboard = () => {
       <div className="quiz-cards">
         {quizzes &&
           quizzes.map((data, index) => {
-            const isTaken = quizzesTaken?.quizzesTaken.includes(data._id);
+            const isTaken = quizzesTaken?.includes(data._id);
             return (
               <div
                 className="cards"
