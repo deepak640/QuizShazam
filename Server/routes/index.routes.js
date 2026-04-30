@@ -40,7 +40,7 @@ router.post("/create-quiz", Authentication, async (req, res) => {
       })
     );
 
-    res.status(201).send({ message: "Quiz created successfully", quizzes });
+    res.status(201).send({ success: true, message: "Quiz created successfully", quizzes });
   } catch (error) {
     console.log("🚀 ~ router.post ~ error:", error);
     res.status(500).send({ message: "Error creating quiz", error });

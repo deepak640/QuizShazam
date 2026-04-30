@@ -180,9 +180,11 @@ const quizSubmission = async (req, res) => {
         const correctOption = question.options.find((opt) => opt.isCorrect);
         if (
           correctOption &&
-          question.options[answer.selectedOption].text === correctOption.text
+          answer.selectedOption !== null &&
+          answer.selectedOption !== undefined &&
+          question.options[answer.selectedOption]?.text === correctOption.text
         ) {
-          score += 1; // Assuming each question carries 1 mark
+          score += 1;
         }
       }
     }

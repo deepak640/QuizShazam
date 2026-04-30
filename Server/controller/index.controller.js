@@ -197,7 +197,7 @@ const createSession = async (req, res) => {
         return quiz;
       })
     );
-    res.status(201).send({ message: "Quiz created successfully" });
+    res.status(201).send({ success: true, message: "Quiz created successfully" });
   } catch (error) {
     console.log("🚀 ~ router.post ~ error:", error);
   }

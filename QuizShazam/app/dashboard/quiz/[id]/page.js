@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Cookies from "js-cookie";
@@ -7,6 +7,7 @@ import { message } from "antd";
 import dynamic from "next/dynamic";
 import Loader from "@/components/Loader";
 import { getQuestions, submitQuiz } from "@/lib/api";
+import { IoVideocamOffOutline, IoVideocamOutline } from "react-icons/io5";
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
@@ -14,6 +15,62 @@ const TIMER_MAX = 10;
 const RADIUS = 30;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
+// ── Camera widget ─────────────────────────────────────────────────────────────
+function CameraWidget() {
+  const videoRef = useRef(null);
+  const [status, setStatus] = useState("pending");
+
+  useEffect(() => {
+    let stream;
+    if (!navigator.mediaDevices?.getUserMedia) { setStatus("denied"); return; }
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: "user" }, audio: false })
+      .then((s) => {
+        stream = s;
+        if (videoRef.current) {
+          videoRef.current.srcObject = s;
+        }
+        setStatus("active");
+      })
+      .catch(() => setStatus("denied"));
+    return () => stream?.getTracks().forEach((t) => t.stop());
+  }, []);
+
+  if (status === "denied") {
+    return (
+      <div className="fixed top-4 right-4 z-50 w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 shadow-md flex items-center justify-center">
+        <IoVideocamOffOutline className="text-slate-400" size={20} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed top-4 right-4 z-50 rounded-2xl overflow-hidden shadow-xl border-2 border-white/70 bg-black"
+      style={{ width: 128, height: 96 }}>
+      {status === "pending" && (
+        <div className="w-full h-full flex items-center justify-center bg-slate-800">
+          <IoVideocamOutline className="text-slate-400" size={24} />
+        </div>
+      )}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="w-full h-full object-cover"
+        style={{ transform: "scaleX(-1)", display: status === "active" ? "block" : "none" }}
+      />
+      {status === "active" && (
+        <div className="absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/40 rounded-full px-1.5 py-0.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+          <span className="text-white text-[9px] font-semibold tracking-wide">LIVE</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function QuizPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -22,20 +79,23 @@ export default function QuizPage() {
   const [answers, setAnswers] = useState([]);
   const [selectedOptions, setSelectedOptions] = useState({});
   const [timeLeft, setTimeLeft] = useState(TIMER_MAX);
-  const [popKey, setPopKey] = useState(0);
 
   const { data: quizData, isLoading } = useQuery({ queryKey: ["questions", { id }], queryFn: getQuestions });
   const { mutate, data: submitData, isPending } = useMutation({
-    mutationFn: ({ values, token }) => submitQuiz({ values, token })
+    mutationFn: ({ values, token }) => submitQuiz({ values, token }),
   });
 
+  // Auto-advance or submit when timer hits 0
   useEffect(() => {
     if (!quizData?.length) return;
     if (timeLeft <= 0) {
+      // Record null answer for unanswered questions
       const qId = quizData[currentIndex]._id;
-      if (!answers.find((a) => a.questionId === qId)) {
-        setAnswers((prev) => [...prev, { questionId: qId, selectedOption: null }]);
-      }
+      setAnswers((prev) =>
+        prev.find((a) => a.questionId === qId)
+          ? prev
+          : [...prev, { questionId: qId, selectedOption: null }]
+      );
       if (currentIndex < quizData.length - 1) {
         setCurrentIndex((i) => i + 1);
         setTimeLeft(TIMER_MAX);
@@ -49,7 +109,6 @@ export default function QuizPage() {
   }, [timeLeft, currentIndex, quizData]);
 
   const handleOptionClick = (qId, optIdx) => {
-    setPopKey((k) => k + 1);
     setSelectedOptions((prev) => ({ ...prev, [qId]: optIdx }));
     setAnswers((prev) => {
       const existing = prev.find((a) => a.questionId === qId);
@@ -75,29 +134,33 @@ export default function QuizPage() {
   };
 
   const handleNext = () => {
-    const selected = selectedOptions[quizData[currentIndex]._id];
-    if (selected === undefined) { messageApi.warning("Please select an answer"); return; }
-    if (currentIndex < quizData.length - 1) { setCurrentIndex((i) => i + 1); setTimeLeft(TIMER_MAX); }
-    else handleSubmit();
-  };
-
-  const handlePrev = () => {
-    if (currentIndex > 0) { setCurrentIndex((i) => i - 1); setTimeLeft(TIMER_MAX); }
+    if (selectedOptions[quizData[currentIndex]._id] === undefined) {
+      messageApi.warning("Please select an answer or wait for the timer");
+      return;
+    }
+    if (currentIndex < quizData.length - 1) {
+      setCurrentIndex((i) => i + 1);
+      setTimeLeft(TIMER_MAX);
+    } else {
+      handleSubmit();
+    }
   };
 
   if (isLoading) return <Loader />;
   if (!quizData?.length) return <p className="text-center py-20 text-slate-500">No quiz data available.</p>;
 
   const { questionText, _id, options } = quizData[currentIndex];
-  const progress = ((currentIndex) / quizData.length) * 100;
+  const progress = (currentIndex / quizData.length) * 100;
   const strokeDashoffset = CIRCUMFERENCE - (timeLeft / TIMER_MAX) * CIRCUMFERENCE;
   const isUrgent = timeLeft <= 3;
-
   const LABELS = ["A", "B", "C", "D"];
 
   return (
     <div className="min-h-screen bg-mesh flex flex-col items-center justify-center px-4 py-10">
       {contextHolder}
+
+      {/* Camera — fixed top-right */}
+      <CameraWidget />
 
       <div className="w-full max-w-2xl fade-up">
         {/* Top bar */}
@@ -106,7 +169,7 @@ export default function QuizPage() {
             onClick={() => router.back()}
             className="flex items-center gap-2 text-sm text-slate-500 hover:text-violet-700 transition font-medium"
           >
-            ← Back
+            ← Exit
           </button>
           <div className="text-sm text-slate-500 font-medium">
             {currentIndex + 1} <span className="text-slate-300">/</span> {quizData.length}
@@ -125,22 +188,21 @@ export default function QuizPage() {
         <div className="glass rounded-3xl shadow-xl shadow-violet-100 p-8">
           {/* Timer + question header */}
           <div className="flex items-start justify-between mb-6 gap-4">
-            <div>
+            <div className="flex-1">
               <span className="text-xs font-semibold text-violet-700 uppercase tracking-widest">
                 Question {currentIndex + 1}
               </span>
               <h3 className="text-xl font-bold text-slate-900 mt-1 leading-snug">{questionText}</h3>
             </div>
 
-            {/* SVG circular timer */}
-            <div className="relative flex-shrink-0 w-16 h-16">
+            {/* Circular timer */}
+            <div className="relative shrink-0 w-16 h-16">
               <svg width="64" height="64" className="-rotate-90">
                 <circle cx="32" cy="32" r={RADIUS} fill="none" stroke="#f3f4f6" strokeWidth="4" />
                 <circle
                   cx="32" cy="32" r={RADIUS} fill="none"
                   stroke={isUrgent ? "#ef4444" : "#7c3aed"}
-                  strokeWidth="4"
-                  strokeLinecap="round"
+                  strokeWidth="4" strokeLinecap="round"
                   strokeDasharray={CIRCUMFERENCE}
                   strokeDashoffset={strokeDashoffset}
                   style={{ transition: "stroke-dashoffset 0.9s linear, stroke 0.3s" }}
@@ -166,7 +228,7 @@ export default function QuizPage() {
                       : "border-slate-100 bg-white hover:border-violet-200 hover:bg-violet-50/50 text-slate-700"
                   }`}
                 >
-                  <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 transition-colors ${
+                  <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${
                     isSelected ? "bg-violet-700 text-white" : "bg-slate-100 text-slate-500"
                   }`}>
                     {LABELS[i]}
@@ -177,19 +239,12 @@ export default function QuizPage() {
             })}
           </div>
 
-          {/* Navigation */}
-          <div className="flex items-center justify-between gap-3">
-            <button
-              onClick={handlePrev}
-              disabled={currentIndex === 0}
-              className="flex-1 py-3 rounded-xl border-2 border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-30 transition"
-            >
-              ← Previous
-            </button>
+          {/* Navigation — Next only, no Previous */}
+          <div className="flex">
             {currentIndex < quizData.length - 1 ? (
               <button
                 onClick={handleNext}
-                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-700 to-indigo-500 text-white text-sm font-semibold hover:opacity-90 transition shadow-md shadow-violet-200"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-700 to-indigo-500 text-white text-sm font-semibold hover:opacity-90 transition shadow-md shadow-violet-200"
               >
                 Next →
               </button>
@@ -197,7 +252,7 @@ export default function QuizPage() {
               <button
                 onClick={handleSubmit}
                 disabled={isPending || !!submitData}
-                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-700 to-indigo-500 text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition shadow-md shadow-violet-200"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-700 to-indigo-500 text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition shadow-md shadow-violet-200"
               >
                 {isPending ? "Submitting…" : "Submit Quiz ✓"}
               </button>
@@ -220,6 +275,11 @@ export default function QuizPage() {
             />
           ))}
         </div>
+
+        {/* Timer hint */}
+        <p className="text-center text-xs text-slate-400 mt-4">
+          Unanswered questions auto-skip when the timer runs out
+        </p>
       </div>
     </div>
   );
