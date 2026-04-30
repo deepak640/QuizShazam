@@ -1,5 +1,5 @@
 "use client";
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";
 import Cookies from "js-cookie";
 import Link from "next/link";
 import { IoArrowForward, IoCheckmarkCircle, IoSearchOutline } from "react-icons/io5";
@@ -16,7 +16,10 @@ const COLORS = ["from-violet-600 to-indigo-500", "from-indigo-500 to-cyan-500", 
 export default function Dashboard() {
   const [search, setSearch] = useState("");
   const { token } = JSON.parse(Cookies.get("user") || "{}");
-  const { data, isLoading } = useQuery(["quizzes", { token }], getQuizzes);
+  const { data, isLoading } = useQuery({
+    queryKey: ["quizzes", { token }],
+    queryFn: getQuizzes
+  });
 
   if (isLoading) return <Loader />;
   const { quizzes, quizzesTaken } = data || {};

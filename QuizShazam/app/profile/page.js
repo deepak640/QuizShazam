@@ -1,5 +1,5 @@
 "use client";
-import { useMutation, useQuery } from "react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { message } from "antd";
@@ -15,10 +15,14 @@ export default function Profile() {
   const router = useRouter();
   const [messageApi, contextHolder] = message.useMessage();
 
-  const { data: userData, isLoading } = useQuery(["profile", { token }], getProfile);
-  const { mutate: sendMail } = useMutation(mailPasswordLink);
+  const { data: userData, isLoading } = useQuery({ queryKey: ["profile", { token }], queryFn: getProfile });
+  const { mutate: sendMail } = useMutation({ mutationFn: mailPasswordLink });
   const obj = { userid: userData?.profile._id };
-  const { data: stats } = useQuery(["stats", { token, obj }], userStats, { enabled: !!userData?.profile._id });
+  const { data: stats } = useQuery({
+    queryKey: ["stats", { token, obj }],
+    queryFn: userStats,
+    enabled: !!userData?.profile._id,
+  });
 
   if (isLoading) return <Loader />;
   const { profile, quizzes } = userData;

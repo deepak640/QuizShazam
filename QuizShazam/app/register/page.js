@@ -9,7 +9,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import Cookies from "js-cookie";
 import GoogleButton from "@/components/GoogleButton";
 import { userRegister } from "@/lib/api";
-import { useMutation } from "react-query";
+import { useMutation } from "@tanstack/react-query";
 import { IoEyeOutline, IoEyeOffOutline, IoRocketOutline } from "react-icons/io5";
 
 export default function Register() {
@@ -20,7 +20,7 @@ export default function Register() {
   const [file, setFile] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const { mutate, isLoading, data } = useMutation(userRegister);
+  const { mutate, isPending: isLoading, data } = useMutation({ mutationFn: userRegister });
 
   const onSuccess = (data) => {
     Cookies.set("user", JSON.stringify(data), { expires: 1 });

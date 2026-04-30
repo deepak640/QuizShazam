@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useMutation, useQuery } from "react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import Cookies from "js-cookie";
 import { message } from "antd";
 import dynamic from "next/dynamic";
@@ -24,10 +24,10 @@ export default function QuizPage() {
   const [timeLeft, setTimeLeft] = useState(TIMER_MAX);
   const [popKey, setPopKey] = useState(0);
 
-  const { data: quizData, isLoading } = useQuery(["questions", { id }], getQuestions);
-  const { mutate, data: submitData, isLoading: isPending } = useMutation(({ values, token }) =>
-    submitQuiz({ values, token })
-  );
+  const { data: quizData, isLoading } = useQuery({ queryKey: ["questions", { id }], queryFn: getQuestions });
+  const { mutate, data: submitData, isPending } = useMutation({
+    mutationFn: ({ values, token }) => submitQuiz({ values, token })
+  });
 
   useEffect(() => {
     if (!quizData?.length) return;

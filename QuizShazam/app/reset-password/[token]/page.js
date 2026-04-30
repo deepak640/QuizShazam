@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { useMutation } from "react-query";
+import { useMutation } from "@tanstack/react-query";
 import { message } from "antd";
 import Link from "next/link";
 import { resetPassword } from "@/lib/api";
@@ -11,7 +11,9 @@ export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [messageApi, contextHolder] = message.useMessage();
-  const { mutate } = useMutation(resetPassword);
+  const { mutate } = useMutation({
+    mutationFn: resetPassword
+  });
 
   const handleSubmit = (e) => {
     e.preventDefault();

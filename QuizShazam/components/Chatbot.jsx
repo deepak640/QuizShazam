@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useMutation } from "react-query";
+import { useMutation } from "@tanstack/react-query";
 import { chat } from "@/lib/api";
 import Cookies from "js-cookie";
 
@@ -8,7 +8,9 @@ export default function Chatbot() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef(null);
-  const { mutate: sendChat } = useMutation("sendMessage", chat);
+  const { mutate: sendChat } = useMutation({
+    mutationFn: chat
+  });
 
   const getToken = () => {
     const data = Cookies.get("user");

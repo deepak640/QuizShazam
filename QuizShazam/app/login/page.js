@@ -4,7 +4,7 @@ import Link from "next/link";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import Cookies from "js-cookie";
-import { useMutation } from "react-query";
+import { useMutation } from "@tanstack/react-query";
 import { message } from "antd";
 import GoogleButton from "@/components/GoogleButton";
 import { googleLogin, userLogin } from "@/lib/api";
@@ -16,9 +16,10 @@ export default function Login() {
   const [isRemember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const { mutate, isLoading, data } = useMutation(async ({ values, method }) =>
-    method === "google" ? await googleLogin(values) : await userLogin(values)
-  );
+  const { mutate, isPending: isLoading, data } = useMutation({
+    mutationFn: async ({ values, method }) =>
+      method === "google" ? await googleLogin(values) : await userLogin(values),
+  });
 
   const onSuccess = (data) => {
     Cookies.set("user", JSON.stringify(data), { expires: isRemember ? 30 : undefined });

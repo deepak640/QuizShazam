@@ -1,6 +1,6 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";
 import Cookies from "js-cookie";
 import Loader from "@/components/Loader";
 import { getResult } from "@/lib/api";
@@ -13,7 +13,7 @@ export default function ResultPage() {
   const { id } = useParams();
   const router = useRouter();
   const { token } = JSON.parse(Cookies.get("user") || "{}");
-  const { data, isLoading } = useQuery(["results", { id, token }], getResult);
+  const { data, isLoading } = useQuery({ queryKey: ["results", { id, token }], queryFn: getResult });
 
   if (isLoading) return <Loader />;
   const { answers, quiz, score } = data;

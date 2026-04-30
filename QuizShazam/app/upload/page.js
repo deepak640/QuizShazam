@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import * as XLSX from "xlsx";
-import { useMutation } from "react-query";
+import { useMutation } from "@tanstack/react-query";
 import { message } from "antd";
 import Cookies from "js-cookie";
 import { uploadData } from "@/lib/api";
@@ -11,7 +11,9 @@ export default function Upload() {
   const [jsonData, setJsonData] = useState(null);
   const [error, setError] = useState(null);
   const [messageApi, contextHolder] = message.useMessage();
-  const { mutate, isLoading } = useMutation(uploadData);
+  const { mutate, isPending: isLoading } = useMutation({
+    mutationFn: uploadData
+  });
 
   const handleFileChange = (e) => {
     const f = e.target.files[0];
