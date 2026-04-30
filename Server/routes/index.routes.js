@@ -92,4 +92,18 @@ router.post("/create-assessment", createSession)
 
 router.get("/getAllsession", getAllsession)
 
+router.delete("/quiz/:id", Authentication, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const quiz = await Quiz.findById(id);
+    if (!quiz) return res.status(404).send({ message: "Quiz not found" });
+    await Question.deleteMany({ quiz: id });
+    await Quiz.findByIdAndDelete(id);
+    res.status(200).send({ message: "Quiz deleted successfully" });
+  } catch (error) {
+    console.log("🚀 ~ router.delete ~ error:", error);
+    res.status(500).send({ message: "Error deleting quiz", error });
+  }
+})
+
 module.exports = router;

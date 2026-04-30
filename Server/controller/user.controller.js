@@ -8,6 +8,7 @@ const {
   GoogleGenerativeAI,
 } = require("@google/generative-ai");
 const { BlobServiceClient } = require("@azure/storage-blob");
+const { default: mongoose } = require("mongoose");
 
 
 // Func

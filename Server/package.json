@@ -6,6 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "node app.js",
+    "dev": "PORT=4000 nodemon app.js",
     "vercel-build": "echo 'hello world'"
   },
   "dependencies": {

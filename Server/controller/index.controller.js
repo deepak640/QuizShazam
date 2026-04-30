@@ -241,7 +241,8 @@ const getAllQuizzes = async (req, res) => {
         $project: {
           title: 1,
           description: 1,
-          questions: 1
+          questions: 1,
+          createdAt: 1
         }
       }
     ]);
