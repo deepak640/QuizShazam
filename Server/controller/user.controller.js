@@ -4,27 +4,12 @@ var bcrypt = require("bcryptjs");
 var jwt = require("jsonwebtoken");
 var Question = require("../model/question");
 var Response = require("../model/response");
-const {
-  GoogleGenerativeAI,
-} = require("@google/generative-ai");
 const { BlobServiceClient } = require("@azure/storage-blob");
 const { default: mongoose } = require("mongoose");
 
-
 // Func
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-
-const generationConfig = {
-  temperature: 1,
-  topP: 0.95,
-  topK: 40,
-  maxOutputTokens: 8192,
-  responseMimeType: "text/plain",
-};
 const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_URI);
-const containerClient = blobServiceClient.getContainerClient("uploads"); // Replace with your container name
+const containerClient = blobServiceClient.getContainerClient("uploads");
 
 
 const HomeRoute = async (req, res, next) => {
@@ -272,98 +257,122 @@ const quizMatrix = async (req, res) => {
 }
 
 const aiChat = async (req, res) => {
-  const { message } = req.body;
-  let pipeline = []
-  pipeline.push(
-    {
-      $project: {
-        "title": 1,
-        "description": 1,
-      }
-    })
-  const quizTypesData = await Quiz.aggregate(pipeline);
-
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash-exp",
-    systemInstruction: `
-You are QuizBuddy, a friendly and encouraging study buddy persona.
-
-**Persona:**
-* **Name:** QuizBuddy
-* **Role:**  Helpful and encouraging quiz assistant for a quiz application.
-* **Personality Traits:** Friendly, supportive, approachable, enthusiastic, clear, concise, slightly playful (uses puns when appropriate).
-
-**Goal:**
-* To guide users through quizzes on topics like History, JavaScript, C, and CSS.
-* To encourage user engagement with the quiz application.
-* To track user scores and provide positive reinforcement.
-* **(As per user request):** To initiate the first conversation by asking for the user's username OR email.
-
-**Tone and Style:**
-* **Tone:** Approachable, supportive, enthusiastic, encouraging.
-* **Language:** Conversational, avoids technical jargon unless specifically asked.
-* **Puns:** Incorporate puns related to quiz topics when appropriate to add a touch of playfulness.
-
-**Available Quiz Types:**
-Here are the quiz types available on the website:
-${quizTypesData.map(quiz => `- **${quiz.title}**: ${quiz.description})`).join("\n")}
-
-
-**Developer Information:**
-* This quiz application is developed by Deepak Negi.
-* Contact Number: +91 7292098071
-* Email: ayushdeepnegi@gmail.com
-
-**Behavior and Instructions:**
-* **First Interaction - User Details:**  When first interacting with a user, introduce yourself as QuizBuddy, ask for the user's name, **and then immediately ask for their username OR email.**
-* **User Guidance:**  Guide users through tasks within the quiz application by offering clear options and prompts. Gently ask for clarification if user input is incomplete.
-* **Quiz Enthusiasm:** Respond enthusiastically to quiz-related queries. When asked about quiz topics (History, JavaScript, etc.), provide brief and engaging descriptions.
-* **Feedback:**  Provide positive and encouraging feedback on quiz progress and scores.
-* **Information Handling:** Securely handle user information (like email and username). When confirming changes to user information, be polite and reassuring.
-* **Contact Details:** If asked for contact details, provide the developer information: "This application is developed by Deepak Negi. You can contact him at +91 7292098071 or ayushdeepnegi@gmail.com for support or inquiries."
-
-**Example Phrases:**
-* **Greeting (First Interaction):** "Hey there! I'm QuizBuddy, your study pal! What's your name? And to help me keep track of your progress, what username would you like to use for this quiz bot?"
-* **Response to "What quizzes are there?":** "We have some awesome quizzes available!  Let me tell you about them:\n${quizTypesData.map(quiz => `- **${quiz.type}**: ${quiz.description}`).join("\n")}"
-* **Encouragement:** "Great job!", "You're doing fantastic!"
-* **Greeting (First Interaction):** "Hey there! I'm QuizBuddy, your study pal! What's your name? **And to get started, could you please provide your username OR email?**"
-* **Greeting (Standard):** "Hey there! I'm QuizBuddy, your study pal! What's your name?"
-* **Encouragement:** "Great job!", "You're doing fantastic!", "Keep up the amazing work!", "That's the spirit!"
-* **Puns (Example - for History quiz):**  "Let's make history...with this quiz!", "Don't be history-cal, let's dive in!", "Are you ready to unearth some knowledge?"
-
-**Do not:**
-* Use overly technical jargon unless the user explicitly asks for it.
-* Be overly formal or robotic.
-* Share user's private information unnecessarily.
-* **(Important Consideration) A direct chatbot conversation might not be the *most secure* or *user-friendly* method for collecting even usernames or emails in a real-world application where user privacy is paramount. Consider standard secure web forms for registration/login in production systems.**
-
-**--- IMPORTANT CONSIDERATION ABOUT USER DATA COLLECTION ---**
-
-**WHILE ASKING FOR USERNAME OR EMAIL IN A CHATBOT IS LESS RISKY THAN PASSWORDS, IT'S STILL IMPORTANT TO CONSIDER THE BEST PRACTICES FOR USER DATA COLLECTION, ESPECIALLY IN PRODUCTION APPLICATIONS.**
-
-**FOR APPLICATIONS WHERE USER PRIVACY AND DATA SECURITY ARE CRITICAL, USING STANDARD SECURE WEB FORMS FOR REGISTRATION AND LOGIN IS GENERALLY RECOMMENDED OVER COLLECTING USER INFORMATION DIRECTLY WITHIN A CHATBOT CONVERSATION.**
-
-**CHATBOT INTERACTIONS CAN BE LOGGED, AND WHILE USERNAME/EMAIL IS LESS SENSITIVE THAN PASSWORDS, CONSIDER THE IMPLICATIONS OF LOGGING THIS DATA AND ENSURE YOU HAVE APPROPRIATE PRIVACY POLICIES AND SECURITY MEASURES IN PLACE.**
-
-**THIS INSTRUCTION TO ASK FOR USERNAME/EMAIL AT THE START IS INCLUDED AS PER YOUR SPECIFIC REQUEST FOR *DEMONSTRATION PURPOSES* WITHIN THIS EXERCISE.**
-
-**--- END IMPORTANT CONSIDERATION ---**
-
-Remember to maintain this persona and follow these instructions consistently in all interactions.
-`,
-  });
   try {
-    const chatSession = model.startChat({
-      generationConfig,
-      history: [],
-    });
+    const { message } = req.body;
+    const userId = req.user?.id;
 
-    const result = await chatSession.sendMessage(message);
-    res.status(200).send(result.response.text());
+    if (!message) {
+      return res.status(400).send("Message is required");
+    }
+
+    const lowerMsg = message.toLowerCase();
+
+    // Fetch user info for personalization
+    let userName = "there";
+    if (userId) {
+      const user = await User.findById(userId);
+      if (user) {
+        userName = user.username || "User";
+      }
+    }
+
+    // 1. Fetch available quizzes for dynamic info
+    const quizzes = await Quiz.find({}, "title description questions");
+    const quizList = quizzes.map(q => `- **${q.title}**: ${q.description} (Contains **${q.questions.length}** questions)`).join("\n");
+
+    // Check if user is asking about a specific quiz
+    for (const quiz of quizzes) {
+      if (lowerMsg.includes(quiz.title.toLowerCase()) && lowerMsg.length < 50) {
+        return res.status(200).send(`**${quiz.title}** is a great choice! 🎯\n\n**About:** ${quiz.description}\n**Questions:** It has ${quiz.questions.length} challenging questions to test your knowledge.\n\nReady to start? You can find it on the dashboard!`);
+      }
+    }
+
+    // 2. Rule-based Logic
+    // Greetings (English, Hinglish, Hindi)
+    if (lowerMsg.match(/\b(hi|hello|hey|greetings|hola|namaste|kaise ho|kya haal hai|नमस्ते|कैसे हो)\b/)) {
+      return res.status(200).send(`Hey ${userName}! I'm QuizBuddy, your study pal! 🎓 How can I help you today?\n\nTry asking me:\n- "What is my score?" (Mera score kya hai?)\n- "Who am I?" (Main kaun hoon?)\n- "Available quizzes" (Kaunse quizzes hain?)`);
+    }
+
+    // Score Retrieval (English, Hinglish, Hindi)
+    if (
+      lowerMsg.includes("score") || lowerMsg.includes("result") || lowerMsg.includes("performance") || 
+      lowerMsg.includes("marks") || lowerMsg.includes("how did i do") || 
+      lowerMsg.includes("mera score") || lowerMsg.includes("kitne marks") || lowerMsg.includes("result dikhao") ||
+      lowerMsg.includes("नतीजा") || lowerMsg.includes("परिणाम") || lowerMsg.includes("मेरा स्कोर")
+    ) {
+      if (!userId) {
+        return res.status(200).send("I'd love to help you with your scores, but I couldn't identify you. Please make sure you're logged in!");
+      }
+
+      const userResponses = await Response.find({ user: userId }).populate("quiz", "title");
+      
+      if (userResponses.length === 0) {
+        return res.status(200).send(`Hey ${userName}, it looks like you haven't taken any quizzes yet! ✍️ Once you complete a quiz, I'll be able to show your scores here.`);
+      }
+
+      let responseText = `Here are your quiz scores so far, ${userName}: 📊\n\n`;
+      userResponses.forEach((res, index) => {
+        const quizTitle = res.quiz ? res.quiz.title : "Unknown Quiz";
+        const score = res.score !== undefined ? res.score : 0;
+        const date = new Date(res.createdAt).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        });
+        responseText += `${index + 1}. **${quizTitle}** (${date}): ${score} points\n`;
+      });
+      responseText += `\nKeep up the great work! Is there anything else you'd like to know?`;
+      
+      return res.status(200).send(responseText);
+    }
+
+    // User Info / Personal Data (English, Hinglish, Hindi)
+    if (
+      lowerMsg.includes("who am i") || lowerMsg.includes("my name") || lowerMsg.includes("about me") ||
+      lowerMsg.includes("main kaun hoon") || lowerMsg.includes("kaun hoon main") || lowerMsg.includes("mera naam") ||
+      lowerMsg.includes("मैं कौन हूँ") || lowerMsg.includes("मेरा नाम")
+    ) {
+      if (!userId) {
+        return res.status(200).send("I'm not sure who you are yet! Please log in so I can get to know you.");
+      }
+      const user = await User.findById(userId);
+      return res.status(200).send(`You are **${user.username}**! Your email is ${user.email}. You've taken ${user.quizzesTaken.length} quizzes so far. 🌟`);
+    }
+
+    // Quiz Information (English, Hinglish, Hindi)
+    if (
+      lowerMsg.includes("quiz") || lowerMsg.includes("test") || lowerMsg.includes("list") || lowerMsg.includes("available") ||
+      lowerMsg.includes("kaunse quiz") || lowerMsg.includes("quiz dikhao") ||
+      lowerMsg.includes("कौनसे क्विज़") || lowerMsg.includes("क्विज़ लिस्ट")
+    ) {
+      if (quizzes.length === 0) {
+        return res.status(200).send("We don't have any quizzes available right now, but check back soon!");
+      }
+      return res.status(200).send(`We have some awesome quizzes available! 🚀 Here they are:\n\n${quizList}\n\nWhich one would you like to try?`);
+    }
+
+    // Developer / Contact Information
+    if (lowerMsg.includes("developer") || lowerMsg.includes("contact") || lowerMsg.includes("deepak") || lowerMsg.includes("support") || lowerMsg.includes("who built")) {
+      return res.status(200).send("This application is developed by **Deepak Negi**. 👨‍💻\n\n📞 **Contact:** +91 7292098071\n📧 **Email:** ayushdeepnegi@gmail.com\n\nFeel free to reach out for support or inquiries!");
+    }
+
+    // Specific Subjects (Hardcoded knowledge)
+    if (lowerMsg.includes("javascript") || lowerMsg.includes("js")) {
+      return res.status(200).send("JavaScript is the language of the web! 🌐 Our JS quizzes cover everything from basics to advanced ES6+ features. Want to see the quiz list?");
+    }
+    
+    if (lowerMsg.includes("history")) {
+      return res.status(200).send("Ready to unearth some knowledge? 🏛️ Our History quizzes will take you through time. Check out the available quizzes to start!");
+    }
+
+    // Fallback
+    return res.status(200).send("I'm not quite sure I understood that. 🤔\n\nTry asking me:\n- 'What is my score?'\n- 'What quizzes are available?'\n- 'Who is the developer?'\n- 'Hi' to say hello!");
+
   } catch (error) {
-    res.status(500).send({ message: "Error processing request", error });
+    console.error("Chat Error:", error);
+    res.status(500).send("Oops! Something went wrong on my end. Please try again later.");
   }
-}
+};
 
 
 module.exports = {

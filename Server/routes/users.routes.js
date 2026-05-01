@@ -34,7 +34,7 @@ router.get("/profile", Authentication, userProfile);
 
 router.get("/total-quizMatrix", Authentication, quizMatrix);
 
-router.post("/chat", aiChat);
+router.post("/chat", Authentication, aiChat);
 
 
 module.exports = router;
