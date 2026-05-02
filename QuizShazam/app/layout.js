@@ -2,6 +2,7 @@ import { Poppins } from "next/font/google";
 import "./globals.css";
 import QueryProvider from "@/components/QueryProvider";
 import Header from "@/components/Header";
+import FloatingChat from "@/components/FloatingChat";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
@@ -72,6 +73,7 @@ export default function RootLayout({ children }) {
         <QueryProvider>
           <Header />
           <main className="flex-1">{children}</main>
+          <FloatingChat />
         </QueryProvider>
       </body>
     </html>
