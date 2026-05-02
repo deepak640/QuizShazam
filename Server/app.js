@@ -13,21 +13,21 @@ require("dotenv").config();
 var app = express();
 app.disable("etag");
 // view engine setup
-// app.use(cors({
-//   origin: ['http://localhost:5173/', 'https://quiz-shazam.vercel.app/'],
-//   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-//   allowedHeaders: 'Content-Type,Authorization',
-//   credentials: true
-// }));
+app.use(cors({
+  origin: ['http://localhost:5173/', 'https://quiz-shazam.vercel.app/'],
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  allowedHeaders: 'Content-Type,Authorization',
+  credentials: true
+}));
 
 adminSeeder();
 
-app.use(cors({
-  origin: true,
-  methods: "GET, POST, PUT, DELETE, OPTIONS",
-  allowedHeaders: "Content-Type, Authorization",
-  credentials: true
-}));
+// app.use(cors({
+//   origin: true,
+//   methods: "GET, POST, PUT, DELETE, OPTIONS",
+//   allowedHeaders: "Content-Type, Authorization",
+//   credentials: true
+// }));
 
 app.use(logger("dev"));
 app.use(bodyparser.json({ limit: "50mb" }));

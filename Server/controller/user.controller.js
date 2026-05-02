@@ -265,112 +265,230 @@ const aiChat = async (req, res) => {
       return res.status(400).send("Message is required");
     }
 
-    const lowerMsg = message.toLowerCase();
+    const msg = message.toLowerCase().trim();
 
-    // Fetch user info for personalization
-    let userName = "there";
-    if (userId) {
-      const user = await User.findById(userId);
-      if (user) {
-        userName = user.username || "User";
-      }
+    // ── Fetch live data ───────────────────────────────────────────────────
+    const [quizzes, userDoc, userResponses] = await Promise.all([
+      Quiz.find({}, "title description questions").lean(),
+      userId ? User.findById(userId).lean() : null,
+      userId ? Response.find({ user: userId }).populate("quiz", "title questions").lean() : [],
+    ]);
+
+    const userName  = userDoc?.username ?? "there";
+    const quizCount = userDoc?.quizzesTaken?.length ?? 0;
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    const match = (...terms) => terms.some(t => msg.includes(t));
+
+    const quizList = quizzes.length
+      ? quizzes.map((q, i) =>
+          `**${i + 1}. ${q.title}** — ${q.description || "No description"} *(${q.questions.length} questions)*`
+        ).join("\n")
+      : "No quizzes available right now. Check back soon!";
+
+    // Best score from history
+    const bestEntry = userResponses.reduce((best, r) => {
+      const total = r.quiz?.questions?.length || 1;
+      const pct = (r.score / total) * 100;
+      return pct > (best?.pct ?? -1) ? { ...r, pct } : best;
+    }, null);
+
+    // Recommend a quiz the user hasn't taken yet
+    const takenIds = (userDoc?.quizzesTaken ?? []).map(id => id.toString());
+    const untried = quizzes.find(q => !takenIds.includes(q._id.toString()));
+
+    // ── 1. Greetings ──────────────────────────────────────────────────────
+    if (match("hi", "hello", "hey", "hola", "namaste", "yo ", "sup", "kaise ho", "kya haal", "नमस्ते", "kya chal")) {
+      const greets = [
+        `Hey ${userName}! 👋 I'm **QuizBuddy**, your study companion on QuizShazam. Ask me about your scores, quiz topics, or what to study next!`,
+        `Hello ${userName}! 😊 Ready to ace some quizzes today? I can show your scores, explain topics, or recommend your next challenge.`,
+        `Namaste ${userName}! 🙏 QuizBuddy here — your personal guide on QuizShazam. What do you need help with today?`,
+      ];
+      return res.status(200).send(greets[Math.floor(Date.now() / 1000) % greets.length]);
     }
 
-    // 1. Fetch available quizzes for dynamic info
-    const quizzes = await Quiz.find({}, "title description questions");
-    const quizList = quizzes.map(q => `- **${q.title}**: ${q.description} (Contains **${q.questions.length}** questions)`).join("\n");
-
-    // Check if user is asking about a specific quiz
-    for (const quiz of quizzes) {
-      if (lowerMsg.includes(quiz.title.toLowerCase()) && lowerMsg.length < 50) {
-        return res.status(200).send(`**${quiz.title}** is a great choice! 🎯\n\n**About:** ${quiz.description}\n**Questions:** It has ${quiz.questions.length} challenging questions to test your knowledge.\n\nReady to start? You can find it on the dashboard!`);
-      }
-    }
-
-    // 2. Rule-based Logic
-    // Greetings (English, Hinglish, Hindi)
-    if (lowerMsg.match(/\b(hi|hello|hey|greetings|hola|namaste|kaise ho|kya haal hai|नमस्ते|कैसे हो)\b/)) {
-      return res.status(200).send(`Hey ${userName}! I'm QuizBuddy, your study pal! 🎓 How can I help you today?\n\nTry asking me:\n- "What is my score?" (Mera score kya hai?)\n- "Who am I?" (Main kaun hoon?)\n- "Available quizzes" (Kaunse quizzes hain?)`);
-    }
-
-    // Score Retrieval (English, Hinglish, Hindi)
-    if (
-      lowerMsg.includes("score") || lowerMsg.includes("result") || lowerMsg.includes("performance") || 
-      lowerMsg.includes("marks") || lowerMsg.includes("how did i do") || 
-      lowerMsg.includes("mera score") || lowerMsg.includes("kitne marks") || lowerMsg.includes("result dikhao") ||
-      lowerMsg.includes("नतीजा") || lowerMsg.includes("परिणाम") || lowerMsg.includes("मेरा स्कोर")
-    ) {
-      if (!userId) {
-        return res.status(200).send("I'd love to help you with your scores, but I couldn't identify you. Please make sure you're logged in!");
-      }
-
-      const userResponses = await Response.find({ user: userId }).populate("quiz", "title");
-      
+    // ── 2. Score / Results ────────────────────────────────────────────────
+    if (match("score", "result", "marks", "performance", "how did i do", "kitne", "mera result", "mera score", "नतीजा", "परिणाम", "मेरा स्कोर")) {
+      if (!userId) return res.status(200).send("Please **log in** first so I can pull up your quiz scores. 🔐");
       if (userResponses.length === 0) {
-        return res.status(200).send(`Hey ${userName}, it looks like you haven't taken any quizzes yet! ✍️ Once you complete a quiz, I'll be able to show your scores here.`);
+        return res.status(200).send(`Hey ${userName}, you haven't taken any quizzes yet! 📝\nHead to the **Dashboard** and pick one — your scores will show up here once you're done.`);
       }
-
-      let responseText = `Here are your quiz scores so far, ${userName}: 📊\n\n`;
-      userResponses.forEach((res, index) => {
-        const quizTitle = res.quiz ? res.quiz.title : "Unknown Quiz";
-        const score = res.score !== undefined ? res.score : 0;
-        const date = new Date(res.createdAt).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        });
-        responseText += `${index + 1}. **${quizTitle}** (${date}): ${score} points\n`;
+      let out = `Here are your quiz results, **${userName}**: 📊\n\n`;
+      userResponses.forEach((r, i) => {
+        const title = r.quiz?.title ?? "Unknown Quiz";
+        const total = r.quiz?.questions?.length ?? "?";
+        const pct   = total !== "?" ? Math.round((r.score / total) * 100) : "—";
+        const date  = new Date(r.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        const bar   = total !== "?" ? "█".repeat(Math.round(pct / 10)) + "░".repeat(10 - Math.round(pct / 10)) : "";
+        out += `**${i + 1}. ${title}** *(${date})*\n   Score: **${r.score}/${total}** (${pct}%) ${bar}\n\n`;
       });
-      responseText += `\nKeep up the great work! Is there anything else you'd like to know?`;
-      
-      return res.status(200).send(responseText);
-    }
-
-    // User Info / Personal Data (English, Hinglish, Hindi)
-    if (
-      lowerMsg.includes("who am i") || lowerMsg.includes("my name") || lowerMsg.includes("about me") ||
-      lowerMsg.includes("main kaun hoon") || lowerMsg.includes("kaun hoon main") || lowerMsg.includes("mera naam") ||
-      lowerMsg.includes("मैं कौन हूँ") || lowerMsg.includes("मेरा नाम")
-    ) {
-      if (!userId) {
-        return res.status(200).send("I'm not sure who you are yet! Please log in so I can get to know you.");
+      if (bestEntry) {
+        out += `🏆 Your best so far: **${bestEntry.quiz?.title}** with **${Math.round(bestEntry.pct)}%**. Keep it up!`;
       }
-      const user = await User.findById(userId);
-      return res.status(200).send(`You are **${user.username}**! Your email is ${user.email}. You've taken ${user.quizzesTaken.length} quizzes so far. 🌟`);
+      return res.status(200).send(out);
     }
 
-    // Quiz Information (English, Hinglish, Hindi)
-    if (
-      lowerMsg.includes("quiz") || lowerMsg.includes("test") || lowerMsg.includes("list") || lowerMsg.includes("available") ||
-      lowerMsg.includes("kaunse quiz") || lowerMsg.includes("quiz dikhao") ||
-      lowerMsg.includes("कौनसे क्विज़") || lowerMsg.includes("क्विज़ लिस्ट")
-    ) {
-      if (quizzes.length === 0) {
-        return res.status(200).send("We don't have any quizzes available right now, but check back soon!");
+    // ── 3. Who am I / Profile ─────────────────────────────────────────────
+    if (match("who am i", "my name", "about me", "my profile", "main kaun", "mera naam", "मैं कौन", "मेरा नाम")) {
+      if (!userId) return res.status(200).send("You're not logged in yet! Please sign in so I can recognise you. 🔐");
+      const email = userDoc?.email ?? "—";
+      return res.status(200).send(
+        `You are **${userName}** 🌟\n📧 Email: ${email}\n🎯 Quizzes taken: **${quizCount}**\n\n${
+          quizCount === 0
+            ? "You haven't taken any quizzes yet — go explore the Dashboard!"
+            : bestEntry
+            ? `Your best score is in **${bestEntry.quiz?.title}** — impressive! 🔥`
+            : "Great to have you here!"
+        }`
+      );
+    }
+
+    // ── 4. Quiz list ──────────────────────────────────────────────────────
+    if (match("quiz", "test", "available", "list", "kaunse", "show quiz", "quiz dikhao", "क्विज़", "कौनसे")) {
+      const rec = untried ? `\n\n👉 I'd recommend trying **${untried.title}** next!` : "";
+      return res.status(200).send(`Here are all the quizzes available on QuizShazam right now 🚀\n\n${quizList}${rec}`);
+    }
+
+    // ── 5. Recommendation ─────────────────────────────────────────────────
+    if (match("recommend", "suggest", "what should i", "next quiz", "kya karun", "kya lu")) {
+      if (!untried) {
+        return res.status(200).send(`Wow ${userName}, you've taken all available quizzes! 🎉 Try retaking your lowest scorer to improve your percentage.`);
       }
-      return res.status(200).send(`We have some awesome quizzes available! 🚀 Here they are:\n\n${quizList}\n\nWhich one would you like to try?`);
+      return res.status(200).send(`Based on your history, I recommend trying **${untried.title}** next! 🎯\n${untried.description || ""}\nIt has **${untried.questions.length} questions** — you've got this!`);
     }
 
-    // Developer / Contact Information
-    if (lowerMsg.includes("developer") || lowerMsg.includes("contact") || lowerMsg.includes("deepak") || lowerMsg.includes("support") || lowerMsg.includes("who built")) {
-      return res.status(200).send("This application is developed by **Deepak Negi**. 👨‍💻\n\n📞 **Contact:** +91 7292098071\n📧 **Email:** ayushdeepnegi@gmail.com\n\nFeel free to reach out for support or inquiries!");
+    // ── 6. How to use the platform ────────────────────────────────────────
+    if (match("how to", "how do i", "kaise", "submit", "start quiz", "take quiz", "upload", "kaise karu")) {
+      return res.status(200).send(
+        `Here's how QuizShazam works 👇\n\n` +
+        `1. **Sign up / Log in** — use email or Google.\n` +
+        `2. **Dashboard** — browse all available quizzes.\n` +
+        `3. **Start a quiz** — a timer starts; questions auto-advance when time runs out.\n` +
+        `4. **Submit** — your answers are scored instantly.\n` +
+        `5. **Results** — see your score, correct answers, and review each question.\n` +
+        `6. **Profile** — track all your past quiz scores in one place.\n\n` +
+        `_(Admin/Educators can upload Excel quiz files from the Admin Panel.)_`
+      );
     }
 
-    // Specific Subjects (Hardcoded knowledge)
-    if (lowerMsg.includes("javascript") || lowerMsg.includes("js")) {
-      return res.status(200).send("JavaScript is the language of the web! 🌐 Our JS quizzes cover everything from basics to advanced ES6+ features. Want to see the quiz list?");
-    }
-    
-    if (lowerMsg.includes("history")) {
-      return res.status(200).send("Ready to unearth some knowledge? 🏛️ Our History quizzes will take you through time. Check out the available quizzes to start!");
+    // ── 7. Topic explanations ─────────────────────────────────────────────
+
+    // JavaScript
+    if (match("javascript", "js ", "es6", "ecmascript", "closure", "hoisting", "promise", "async await", "event loop")) {
+      if (match("closure")) return res.status(200).send("A **closure** in JavaScript is a function that *remembers* variables from its outer scope even after that scope has finished executing.\n\n```js\nfunction counter() {\n  let count = 0;\n  return () => ++count;\n}\nconst inc = counter();\ninc(); // 1\ninc(); // 2\n```\nThe inner function keeps a reference to `count` — that's a closure! 🔒");
+      if (match("hoisting")) return res.status(200).send("**Hoisting** means JavaScript moves `var` declarations and `function` declarations to the top of their scope at compile time.\n\n- `var` is hoisted but *not* initialised (value is `undefined`).\n- `let` / `const` are hoisted but sit in a **Temporal Dead Zone** until the line runs.\n- Function declarations are fully hoisted — you can call them before they're defined.");
+      if (match("promise", "async", "await")) return res.status(200).send("**Promises** represent a future value. `.then()` chains success, `.catch()` handles errors.\n\n`async/await` is syntactic sugar:\n```js\nasync function fetchUser() {\n  const data = await fetch('/api/user');\n  return data.json();\n}\n```\nUnder the hood it's still a Promise — `await` just pauses execution inside the async function.");
+      if (match("event loop")) return res.status(200).send("The **Event Loop** is what makes JavaScript non-blocking despite being single-threaded.\n\n1. **Call Stack** — runs synchronous code.\n2. **Web APIs** — handle timers, fetch, DOM events.\n3. **Callback / Microtask Queue** — queued callbacks wait here.\n4. **Event Loop** — moves tasks from the queue to the stack when it's empty.\n\nMicrotasks (Promises) run before macrotasks (setTimeout). 🔄");
+      return res.status(200).send("**JavaScript** is the backbone of web development! 🌐\n\nKey topics in our JS quiz:\n- Variables: `var` / `let` / `const`, hoisting\n- Functions: closures, arrow functions, IIFE\n- Async: callbacks, Promises, async/await, Event Loop\n- ES6+: destructuring, spread/rest, modules\n- DOM manipulation & event handling\n\nWant a deep dive on any specific concept? Just ask!");
     }
 
-    // Fallback
-    return res.status(200).send("I'm not quite sure I understood that. 🤔\n\nTry asking me:\n- 'What is my score?'\n- 'What quizzes are available?'\n- 'Who is the developer?'\n- 'Hi' to say hello!");
+    // React
+    if (match("react", "jsx", "component", "hook", "usestate", "useeffect", "redux", "context api", "virtual dom")) {
+      if (match("usestate")) return res.status(200).send("**useState** is a React Hook that adds state to a functional component.\n\n```jsx\nconst [count, setCount] = useState(0);\n```\n- `count` holds the current value.\n- `setCount(newVal)` triggers a re-render with the new value.\n- State updates are **asynchronous** — don't rely on the value immediately after calling the setter.");
+      if (match("useeffect")) return res.status(200).send("**useEffect** runs side effects (API calls, subscriptions, timers) after render.\n\n```jsx\nuseEffect(() => {\n  fetchData(); // runs after every render\n}, [dependency]); // only re-runs when dependency changes\n```\nReturn a cleanup function to avoid memory leaks:\n```jsx\nuseEffect(() => {\n  const id = setInterval(tick, 1000);\n  return () => clearInterval(id);\n}, []);```");
+      if (match("virtual dom")) return res.status(200).send("The **Virtual DOM** is a lightweight in-memory copy of the real DOM.\n\nWhen state changes:\n1. React creates a new Virtual DOM tree.\n2. It **diffs** the new tree against the previous one (reconciliation).\n3. Only the changed nodes are updated in the real DOM.\n\nThis makes React much faster than direct DOM manipulation. ⚡");
+      return res.status(200).send("**React** is a UI library for building component-based interfaces. ⚛️\n\nKey concepts:\n- **JSX** — HTML-like syntax in JavaScript\n- **Components** — reusable UI building blocks (functional & class)\n- **Props** — data passed from parent to child\n- **State** — internal component data (`useState`)\n- **Hooks** — `useEffect`, `useContext`, `useRef`, custom hooks\n- **Virtual DOM** — efficient DOM diffing\n\nAsk me about any React concept!");
+    }
+
+    // Next.js
+    if (match("next", "nextjs", "next.js", "app router", "ssr", "ssg", "server component", "getserversideprops", "api route")) {
+      if (match("ssr", "server side")) return res.status(200).send("**SSR (Server-Side Rendering)** in Next.js renders the page HTML on the server *per request*.\n\n- In App Router: any component that uses `async/await` directly is a **Server Component** by default.\n- Use `'use client'` only when you need browser APIs or interactivity.\n- SSR is great for SEO and pages with frequently changing data.");
+      if (match("ssg", "static")) return res.status(200).send("**SSG (Static Site Generation)** pre-renders pages at **build time** — no server needed at runtime.\n\nIn Next.js App Router, static generation is the default for pages with no dynamic data. Add `export const dynamic = 'force-static'` to be explicit. Perfect for blogs, docs, or marketing pages. ⚡");
+      if (match("app router")) return res.status(200).send("Next.js **App Router** (Next 13+) uses a `app/` directory where:\n\n- Folders are routes, `page.tsx` is the UI.\n- `layout.tsx` wraps children (persistent UI like nav/footer).\n- **Server Components** by default — no client JS shipped unless `'use client'`.\n- `loading.tsx` → automatic Suspense; `error.tsx` → error boundaries.\n- Route Groups `(name)/` organise routes without affecting the URL.");
+      return res.status(200).send("**Next.js** is a full-stack React framework by Vercel. 🚀\n\nKey features:\n- **App Router** — file-based routing with `app/` directory\n- **Server & Client Components** — choose where code runs\n- **SSR / SSG / ISR** — flexible rendering strategies\n- **API Routes** — backend endpoints inside the same project\n- **Image & Font optimisation** built-in\n- **Middleware** — edge functions for auth, redirects\n\nWhat aspect of Next.js do you want to explore?");
+    }
+
+    // DSA
+    if (match("dsa", "data structure", "algorithm", "array", "linked list", "tree", "graph", "sorting", "binary search", "big o", "complexity", "recursion", "stack", "queue")) {
+      if (match("big o", "complexity", "time complexity")) return res.status(200).send("**Big-O Notation** describes how an algorithm's time or space grows as input `n` grows.\n\nCommon complexities (best → worst):\n| Notation | Name | Example |\n|---|---|---|\n| O(1) | Constant | Array index lookup |\n| O(log n) | Logarithmic | Binary search |\n| O(n) | Linear | Linear search |\n| O(n log n) | Linearithmic | Merge sort |\n| O(n²) | Quadratic | Bubble sort |\n| O(2ⁿ) | Exponential | Recursive Fibonacci |");
+      if (match("binary search")) return res.status(200).send("**Binary Search** finds a target in a *sorted* array in O(log n) time.\n\n```js\nfunction binarySearch(arr, target) {\n  let lo = 0, hi = arr.length - 1;\n  while (lo <= hi) {\n    const mid = (lo + hi) >> 1;\n    if (arr[mid] === target) return mid;\n    arr[mid] < target ? (lo = mid + 1) : (hi = mid - 1);\n  }\n  return -1;\n}\n```\nKey idea: eliminate half the search space each iteration. 🔍");
+      if (match("recursion")) return res.status(200).send("**Recursion** is when a function calls itself to solve a smaller version of the same problem.\n\nEvery recursive function needs:\n1. **Base case** — the stopping condition.\n2. **Recursive case** — makes the problem smaller.\n\n```js\nfunction factorial(n) {\n  if (n <= 1) return 1;        // base case\n  return n * factorial(n - 1); // recursive case\n}\n```\nWatch out for **stack overflow** if the base case is missing! ⚠️");
+      return res.status(200).send("**DSA (Data Structures & Algorithms)** is core to tech interviews. 💡\n\nTopics covered in our DSA quiz:\n- **Arrays & Strings** — two pointers, sliding window\n- **Linked Lists** — singly, doubly, cycle detection\n- **Stacks & Queues** — monotonic stack, BFS\n- **Trees** — BST, traversals (inorder/preorder/postorder), height\n- **Graphs** — DFS, BFS, shortest path (Dijkstra)\n- **Sorting** — merge sort, quick sort, counting sort\n- **Dynamic Programming** — memoisation, tabulation\n\nAsk about any specific topic!");
+    }
+
+    // MongoDB
+    if (match("mongodb", "mongoose", "nosql", "aggregation", "schema", "document", "collection", "pipeline")) {
+      if (match("aggregation", "pipeline")) return res.status(200).send("MongoDB **Aggregation Pipeline** transforms documents through a series of stages:\n\n```js\ndb.orders.aggregate([\n  { $match: { status: 'active' } },   // filter\n  { $group: { _id: '$userId', total: { $sum: '$amount' } } }, // group\n  { $sort: { total: -1 } },            // sort\n  { $limit: 5 }                        // top 5\n]);\n```\nCommon stages: `$match`, `$group`, `$sort`, `$project`, `$lookup`, `$unwind`. 🔗");
+      if (match("schema", "mongoose")) return res.status(200).send("**Mongoose** is an ODM (Object Document Mapper) for MongoDB in Node.js.\n\n```js\nconst userSchema = new mongoose.Schema({\n  name:  { type: String, required: true },\n  email: { type: String, unique: true },\n  role:  { type: String, enum: ['user','admin'], default: 'user' },\n}, { timestamps: true });\n\nmodule.exports = mongoose.model('User', userSchema);\n```\nSchemas add structure and validation on top of MongoDB's flexible documents.");
+      return res.status(200).send("**MongoDB** is a document-oriented NoSQL database. 🍃\n\nKey concepts:\n- **Collections** → tables; **Documents** → rows (stored as BSON/JSON)\n- **Schema-less** — documents in the same collection can have different fields\n- **Aggregation Pipeline** — powerful data transformation & analytics\n- **Indexes** — critical for query performance\n- **Transactions** — ACID-compliant multi-document transactions (v4+)\n- **Atlas** — managed cloud MongoDB\n\nAsk me about aggregations, indexing, or Mongoose!");
+    }
+
+    // SQL / PostgreSQL
+    if (match("sql", "postgres", "postgresql", "mysql", "relational", "join", "index", "transaction", "query")) {
+      if (match("join")) return res.status(200).send("SQL **JOINs** combine rows from two or more tables:\n\n| Type | Returns |\n|---|---|\n| `INNER JOIN` | Only matching rows in both tables |\n| `LEFT JOIN` | All rows from left + matches from right |\n| `RIGHT JOIN` | All rows from right + matches from left |\n| `FULL OUTER JOIN` | All rows from both tables |\n\n```sql\nSELECT u.name, o.total\nFROM users u\nINNER JOIN orders o ON u.id = o.user_id;\n```");
+      if (match("index")) return res.status(200).send("A database **Index** is a data structure that speeds up `SELECT` queries at the cost of slower writes and more storage.\n\n```sql\nCREATE INDEX idx_users_email ON users(email);\n```\n- Use indexes on columns you frequently filter (`WHERE`) or sort (`ORDER BY`).\n- **Composite index**: `(col1, col2)` — order matters! Left-prefix rule applies.\n- Too many indexes slow down `INSERT/UPDATE/DELETE`. Balance is key. ⚖️");
+      if (match("transaction")) return res.status(200).send("A **Transaction** groups multiple SQL operations into one atomic unit — either all succeed or all fail (ACID properties).\n\n```sql\nBEGIN;\n  UPDATE accounts SET balance = balance - 500 WHERE id = 1;\n  UPDATE accounts SET balance = balance + 500 WHERE id = 2;\nCOMMIT; -- or ROLLBACK on error\n```\n\n**ACID**: **A**tomicity · **C**onsistency · **I**solation · **D**urability");
+      return res.status(200).send("**SQL** is the standard language for relational databases (PostgreSQL, MySQL, SQLite). 🗄️\n\nCore topics:\n- **DDL** — `CREATE`, `ALTER`, `DROP`\n- **DML** — `SELECT`, `INSERT`, `UPDATE`, `DELETE`\n- **Joins** — INNER, LEFT, RIGHT, FULL OUTER\n- **Aggregates** — `COUNT`, `SUM`, `AVG`, `GROUP BY`, `HAVING`\n- **Subqueries & CTEs** — `WITH` clause\n- **Indexes & Transactions**\n- **PostgreSQL extras** — JSONB, window functions, full-text search\n\nWhat SQL topic do you want to go deeper on?");
+    }
+
+    // Full Stack / Node.js
+    if (match("fullstack", "full stack", "full-stack", "node", "nodejs", "express", "rest api", "backend", "frontend")) {
+      if (match("rest api", "restful")) return res.status(200).send("A **REST API** uses HTTP methods to perform CRUD operations on resources:\n\n| Method | Action | Example |\n|---|---|---|\n| `GET` | Read | `GET /users/:id` |\n| `POST` | Create | `POST /users` |\n| `PUT/PATCH` | Update | `PUT /users/:id` |\n| `DELETE` | Delete | `DELETE /users/:id` |\n\nBest practices: use proper status codes (200/201/400/404/500), version your API (`/v1/`), and always validate inputs.");
+      if (match("express", "middleware")) return res.status(200).send("**Express.js** is a minimal Node.js web framework.\n\n```js\nconst app = express();\napp.use(express.json());           // middleware: parse JSON body\napp.use('/users', usersRouter);    // route mounting\napp.use((err, req, res, next) => { // error handling middleware\n  res.status(500).json({ error: err.message });\n});\n```\n**Middleware** runs between request and response — great for auth, logging, validation.");
+      return res.status(200).send("**Full Stack Development** means building both the frontend (UI) and backend (server + database). 🖥️\n\nQuizShazam itself is a full stack app:\n- **Frontend**: Next.js + Tailwind CSS + React Query\n- **Backend**: Node.js + Express.js + MongoDB + Mongoose\n- **Auth**: JWT + Google OAuth\n- **Storage**: Azure Blob Storage\n- **Email**: Sendinblue\n\nTopics in the quiz: REST APIs, authentication, database design, deployment, and more!");
+    }
+
+    // ── 8. Motivation / Struggling ────────────────────────────────────────
+    if (match("fail", "failed", "bad score", "low score", "struggle", "hard", "difficult", "can't", "give up", "help me", "bura score")) {
+      return res.status(200).send(
+        `Hey ${userName}, don't be too hard on yourself! 💪\n\n` +
+        `Every expert was once a beginner. Here's what I suggest:\n` +
+        `1. **Review the questions you got wrong** — the results page shows correct answers.\n` +
+        `2. **Study the concept** — ask me to explain any topic you're unsure about.\n` +
+        `3. **Retake the quiz** — repetition builds confidence.\n\n` +
+        `You've already taken **${quizCount} quiz${quizCount !== 1 ? "zes" : ""}** — that's more than most people! Keep going. 🔥`
+      );
+    }
+
+    // ── 9. Developer / Contact ────────────────────────────────────────────
+    if (match("developer", "contact", "deepak", "support", "who built", "who made", "creator", "feedback")) {
+      return res.status(200).send("**QuizShazam** was built by **Deepak Negi** 👨‍💻\n\n📞 Phone: +91 7292098071\n📧 Email: ayushdeepnegi@gmail.com\n\nFor bugs, feedback, or questions — feel free to reach out directly!");
+    }
+
+    // ── 10. Goodbye ───────────────────────────────────────────────────────
+    if (match("bye", "goodbye", "see you", "later", "alvida", "baad mein")) {
+      return res.status(200).send(`See you later, **${userName}**! 👋 Keep studying and best of luck on your next quiz. You've got this! 🌟`);
+    }
+
+    // ── 11. Thanks ────────────────────────────────────────────────────────
+    if (match("thank", "thanks", "shukriya", "dhanyavad", "ty ")) {
+      return res.status(200).send(`You're welcome, **${userName}**! 😊 That's what I'm here for. Anything else you'd like to know?`);
+    }
+
+    // ── 12. Specific quiz lookup by name ──────────────────────────────────
+    for (const q of quizzes) {
+      if (msg.includes(q.title.toLowerCase())) {
+        const taken = takenIds.includes(q._id.toString());
+        const myResult = userResponses.find(r => r.quiz?._id?.toString() === q._id.toString());
+        let extra = taken && myResult
+          ? `\n\nYou already took this quiz and scored **${myResult.score}/${q.questions.length}** (${Math.round((myResult.score / q.questions.length) * 100)}%). Retake it to improve!`
+          : "\n\nYou haven't tried this one yet — go for it! 🎯";
+        return res.status(200).send(
+          `**${q.title}** 🎓\n\n` +
+          `📋 ${q.description || "A challenging quiz to test your knowledge."}\n` +
+          `❓ Questions: **${q.questions.length}**` +
+          extra
+        );
+      }
+    }
+
+    // ── Fallback ──────────────────────────────────────────────────────────
+    const suggestions = [
+      `"What is my score?"`,
+      `"Show me available quizzes"`,
+      `"Explain closures in JavaScript"`,
+      `"What is a JOIN in SQL?"`,
+      `"Recommend a quiz for me"`,
+      `"How does QuizShazam work?"`,
+    ];
+    return res.status(200).send(
+      `Hmm, I'm not sure how to answer that! 🤔\n\nHere are some things you can ask me:\n` +
+      suggestions.map(s => `- ${s}`).join("\n")
+    );
 
   } catch (error) {
     console.error("Chat Error:", error);
-    res.status(500).send("Oops! Something went wrong on my end. Please try again later.");
+    res.status(500).send("Oops! Something went wrong. Please try again in a moment.");
   }
 };
 
