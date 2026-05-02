@@ -14,9 +14,9 @@ var app = express();
 app.disable("etag");
 // view engine setup
 app.use(cors({
-  origin: ['http://localhost:5173/', 'https://quiz-shazam.vercel.app/'],
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  allowedHeaders: 'Content-Type,Authorization',
+  origin: true,
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+  allowedHeaders: 'Content-Type,Authorization,X-Requested-With,Accept',
   credentials: true
 }));
 
