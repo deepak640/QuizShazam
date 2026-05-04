@@ -5,36 +5,33 @@ var Authentication = require("../middleware/auth");
 
 require("dotenv").config();
 
-const { HomeRoute, register, login, googleLogin, userResult, quizSubmission, userProfile, quizMatrix, aiChat, userQuestion } = require("../controller/user.controller");
+const {
+  HomeRoute, register, login, googleLogin, userResult, quizSubmission,
+  userProfile, quizMatrix, aiChat, userQuestion,
+  updateProfile, setup2FA, enable2FA, disable2FA, validate2FALogin,
+} = require("../controller/user.controller");
 
-
-// Multer setup to handle file uploads
-const storage = multer.memoryStorage(); // Store files in memory temporarily
-const upload = multer({ storage: storage }).single("file"); // Only accept a s
-
+const storage = multer.memoryStorage();
+const upload = multer({ storage }).single("file");
+const uploadPhoto = multer({ storage }).single("photo");
 
 router.get("/", HomeRoute);
-
 router.post("/register", upload, register);
-
 router.post("/login", login);
-
 router.post("/login/google", googleLogin);
+router.post("/2fa/validate", validate2FALogin);
 
-
-// Get user's quiz results
 router.get("/results/:id", Authentication, userResult);
-
 router.get("/quiz/:id/questions", userQuestion);
-
-// Submit Quiz
 router.post("/submit-quiz", Authentication, quizSubmission);
-
 router.get("/profile", Authentication, userProfile);
-
+router.put("/profile", Authentication, uploadPhoto, updateProfile);
 router.get("/total-quizMatrix", Authentication, quizMatrix);
-
 router.post("/chat", Authentication, aiChat);
 
+// 2FA routes
+router.post("/2fa/setup", Authentication, setup2FA);
+router.post("/2fa/enable", Authentication, enable2FA);
+router.post("/2fa/disable", Authentication, disable2FA);
 
 module.exports = router;

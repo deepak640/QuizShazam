@@ -6,9 +6,13 @@ const userSchema = new Schema({
   email: { type: String },
   password: { type: String },
   photoURL: { type: String },
+  bio: { type: String, default: "" },
+  phone: { type: String, default: "" },
   role: { type: String },
   googleAuth: { type: Boolean },
   quizzesTaken: [{ type: Schema.Types.ObjectId, ref: "Quiz" }],
+  twoFactorEnabled: { type: Boolean, default: false },
+  twoFactorSecret: { type: String, default: "" },
   createdAt: { type: Date, default: Date.now },
 });
 

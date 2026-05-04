@@ -10,6 +10,11 @@ export const getQuizzes = async ({ queryKey }) => {
   return res.data;
 };
 
+export const getAllQuizzesPublic = async () => {
+  const res = await axios.get(`${API_URL}/getAllQuizzes`);
+  return res.data;
+};
+
 export const getQuestions = async ({ queryKey }) => {
   const [, { id }] = queryKey;
   const res = await axios.get(`${API_URL}/users/quiz/${id}/questions`);
@@ -71,5 +76,32 @@ export const mailPasswordLink = async ({ values, token }) => {
 
 export const resetPassword = async ({ values, token }) => {
   const res = await axios.post(`${API_URL}/reset-password`, values, { headers: authHeader(token) });
+  return res.data;
+};
+
+export const updateProfile = async ({ values, token }) => {
+  const res = await axios.put(`${API_URL}/users/profile`, values, {
+    headers: { ...authHeader(token), "Content-Type": "multipart/form-data" },
+  });
+  return res.data;
+};
+
+export const setup2FA = async ({ token }) => {
+  const res = await axios.post(`${API_URL}/users/2fa/setup`, {}, { headers: authHeader(token) });
+  return res.data;
+};
+
+export const enable2FA = async ({ values, token }) => {
+  const res = await axios.post(`${API_URL}/users/2fa/enable`, values, { headers: authHeader(token) });
+  return res.data;
+};
+
+export const disable2FA = async ({ values, token }) => {
+  const res = await axios.post(`${API_URL}/users/2fa/disable`, values, { headers: authHeader(token) });
+  return res.data;
+};
+
+export const validate2FALogin = async (values) => {
+  const res = await axios.post(`${API_URL}/users/2fa/validate`, values);
   return res.data;
 };

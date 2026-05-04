@@ -4,12 +4,16 @@ var bcrypt = require("bcryptjs");
 var jwt = require("jsonwebtoken");
 var Question = require("../model/question");
 var Response = require("../model/response");
-const { BlobServiceClient } = require("@azure/storage-blob");
 const { default: mongoose } = require("mongoose");
+const cloudinary = require("cloudinary").v2;
+const speakeasy = require("speakeasy");
+const QRCode = require("qrcode");
 
-// Func
-const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_URI);
-const containerClient = blobServiceClient.getContainerClient("uploads");
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 
 const HomeRoute = async (req, res, next) => {
@@ -27,21 +31,20 @@ const register = async (req, res) => {
 
     let uploadedPhotoURL = "";
     if (photo) {
-      const blobName = `profile-${Date.now()}-${email}.jpg`;
-      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-
-      // Upload the file to Azure Blob Storage
-      await blockBlobClient.upload(photo.buffer, photo.size);
-
-      uploadedPhotoURL = `https://${process.env.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/${containerClient.containerName}/${blobName}`;
-
+      const b64 = `data:${photo.mimetype};base64,${photo.buffer.toString("base64")}`;
+      const result = await cloudinary.uploader.upload(b64, {
+        folder: "quizshazam/profiles",
+        public_id: `profile-${Date.now()}`,
+        resource_type: "image",
+      });
+      uploadedPhotoURL = result.secure_url;
     }
 
     const newUser = new User({
       username,
       email,
       password: password && bcrypt.hashSync(password, 10),
-      photoURL: password ? uploadedPhotoURL : photoURL,
+      photoURL: uploadedPhotoURL,
     });
 
     await newUser.save();
@@ -60,32 +63,26 @@ const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    console.log(req.body)
     const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ error: "User not found" });
-    }
+    if (!user) return res.status(400).json({ error: "User not found" });
 
     const isMatch = bcrypt.compareSync(password, user.password);
-    console.log(isMatch,"isMatch")
-    if (!isMatch) {
-      return res.status(400).json({ error: "Invalid password" });
+    if (!isMatch) return res.status(400).json({ error: "Invalid password" });
+
+    // If 2FA is enabled, return a short-lived temp token instead of a full session
+    if (user.twoFactorEnabled) {
+      const tempToken = jwt.sign({ id: user._id, twoFactorPending: true }, process.env.JWT_SECRET, { expiresIn: "5m" });
+      return res.status(200).json({ requiresTwoFactor: true, tempToken });
     }
-    console.log("🚀 ~ router.post ~ user:", user);
+
     if (user.role) {
-      console.log("🚀 ~ router.post ~ user.role:", user.role);
-      const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
-        expiresIn: "1h",
-      });
+      const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1h" });
       return res.status(200).json({ token });
     }
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
-    const { photoURL } = user;
-    res.status(200).json({ token, photoURL });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    res.status(200).json({ token, photoURL: user.photoURL });
   } catch (error) {
-    console.error("🚀 ~ router.post ~ error:", error);
+    console.error("Login error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 }
@@ -493,6 +490,130 @@ const aiChat = async (req, res) => {
 };
 
 
+// ── Update profile ────────────────────────────────────────────────────────────
+const updateProfile = async (req, res) => {
+  const userId = req.user.id;
+  const { username, bio, phone } = req.body;
+  const photo = req.file;
+  try {
+    const updates = {};
+    if (username) updates.username = username;
+    if (bio !== undefined) updates.bio = bio;
+    if (phone !== undefined) updates.phone = phone;
+
+    if (photo) {
+      const b64 = `data:${photo.mimetype};base64,${photo.buffer.toString("base64")}`;
+      const result = await cloudinary.uploader.upload(b64, {
+        folder: "quizshazam/profiles",
+        public_id: `profile-${userId}`,
+        overwrite: true,
+        resource_type: "image",
+      });
+      updates.photoURL = result.secure_url;
+    }
+
+    const updated = await User.findByIdAndUpdate(userId, updates, { new: true }).select("-password -twoFactorSecret");
+    res.status(200).json({ user: updated });
+  } catch (error) {
+    console.error("updateProfile error:", error);
+    res.status(500).json({ error: "Failed to update profile" });
+  }
+};
+
+// ── 2FA: generate secret + QR code ───────────────────────────────────────────
+const setup2FA = async (req, res) => {
+  const userId = req.user.id;
+  try {
+    const user = await User.findById(userId);
+    const secret = speakeasy.generateSecret({ name: `QuizShazam (${user.email})`, length: 20 });
+
+    // Persist the secret (not yet enabled)
+    await User.findByIdAndUpdate(userId, { twoFactorSecret: secret.base32 });
+
+    const qrCode = await QRCode.toDataURL(secret.otpauth_url);
+    res.status(200).json({ qrCode, secret: secret.base32 });
+  } catch (error) {
+    console.error("setup2FA error:", error);
+    res.status(500).json({ error: "Failed to set up 2FA" });
+  }
+};
+
+// ── 2FA: verify token and enable ─────────────────────────────────────────────
+const enable2FA = async (req, res) => {
+  const userId = req.user.id;
+  const { code } = req.body;
+  try {
+    const user = await User.findById(userId);
+    if (!user.twoFactorSecret) return res.status(400).json({ error: "Run setup first" });
+
+    const valid = speakeasy.totp.verify({
+      secret: user.twoFactorSecret,
+      encoding: "base32",
+      token: code,
+      window: 1,
+    });
+    if (!valid) return res.status(400).json({ error: "Invalid code. Try again." });
+
+    await User.findByIdAndUpdate(userId, { twoFactorEnabled: true });
+    res.status(200).json({ message: "2FA enabled successfully" });
+  } catch (error) {
+    console.error("enable2FA error:", error);
+    res.status(500).json({ error: "Failed to enable 2FA" });
+  }
+};
+
+// ── 2FA: disable ─────────────────────────────────────────────────────────────
+const disable2FA = async (req, res) => {
+  const userId = req.user.id;
+  const { code } = req.body;
+  try {
+    const user = await User.findById(userId);
+    const valid = speakeasy.totp.verify({
+      secret: user.twoFactorSecret,
+      encoding: "base32",
+      token: code,
+      window: 1,
+    });
+    if (!valid) return res.status(400).json({ error: "Invalid code. Try again." });
+
+    await User.findByIdAndUpdate(userId, { twoFactorEnabled: false, twoFactorSecret: "" });
+    res.status(200).json({ message: "2FA disabled" });
+  } catch (error) {
+    console.error("disable2FA error:", error);
+    res.status(500).json({ error: "Failed to disable 2FA" });
+  }
+};
+
+// ── 2FA: validate code during login (uses tempToken) ─────────────────────────
+const validate2FALogin = async (req, res) => {
+  const { tempToken, code } = req.body;
+  try {
+    const decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
+    if (!decoded.twoFactorPending) return res.status(400).json({ error: "Invalid token" });
+
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(400).json({ error: "User not found" });
+
+    const valid = speakeasy.totp.verify({
+      secret: user.twoFactorSecret,
+      encoding: "base32",
+      token: code,
+      window: 1,
+    });
+    if (!valid) return res.status(400).json({ error: "Invalid code. Try again." });
+
+    const token = jwt.sign(
+      { id: user._id, ...(user.role ? { role: user.role } : {}) },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+    res.status(200).json({ token, photoURL: user.photoURL });
+  } catch (error) {
+    console.error("validate2FALogin error:", error);
+    res.status(400).json({ error: "Token expired or invalid. Please log in again." });
+  }
+};
+
 module.exports = {
   HomeRoute,
   register,
@@ -503,5 +624,10 @@ module.exports = {
   aiChat,
   userResult,
   userQuestion,
-  googleLogin
+  googleLogin,
+  updateProfile,
+  setup2FA,
+  enable2FA,
+  disable2FA,
+  validate2FALogin,
 }

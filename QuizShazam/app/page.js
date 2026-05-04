@@ -2,15 +2,11 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, Suspense } from "react";
-import { message } from "antd";
+import { message, Skeleton } from "antd";
 import { SlBadge } from "react-icons/sl";
-import { IoArrowForward, IoFlashOutline, IoTrophyOutline, IoPeopleOutline } from "react-icons/io5";
-
-const FEATURED = [
-  { title: "General Knowledge", desc: "Test your knowledge across history, science, and pop culture.", score: 98, tag: "Popular" },
-  { title: "Science & Tech", desc: "Explore the cutting edge of technology and natural sciences.", score: 95, tag: "Trending" },
-  { title: "World Geography", desc: "How well do you know the world's countries and capitals?", score: 91, tag: "New" },
-];
+import { IoArrowForward, IoFlashOutline, IoTrophyOutline, IoPeopleOutline, IoBookOutline, IoShieldCheckmarkOutline } from "react-icons/io5";
+import { useQuery } from "@tanstack/react-query";
+import { getAllQuizzesPublic } from "@/lib/api";
 
 const STATS = [
   { icon: <IoFlashOutline size={22} />, value: "50+", label: "Quizzes" },
@@ -18,9 +14,32 @@ const STATS = [
   { icon: <IoTrophyOutline size={22} />, value: "500K+", label: "Attempts" },
 ];
 
+const ABOUT_FEATURES = [
+  {
+    icon: <IoBookOutline size={24} className="text-violet-600" />,
+    title: "Extensive Library",
+    desc: "Access a wide range of topics from technical coding challenges to general trivia."
+  },
+  {
+    icon: <IoTrophyOutline size={24} className="text-amber-500" />,
+    title: "Track Progress",
+    desc: "Monitor your performance over time with detailed analytics and scoring."
+  },
+  {
+    icon: <IoShieldCheckmarkOutline size={24} className="text-emerald-500" />,
+    title: "Verified Content",
+    desc: "All quizzes are curated and verified to ensure high-quality learning experiences."
+  }
+];
+
 function HomeContent() {
   const searchParams = useSearchParams();
   const [messageApi, contextHolder] = message.useMessage();
+
+  const { data: quizzes, isLoading } = useQuery({
+    queryKey: ["public-quizzes"],
+    queryFn: getAllQuizzesPublic
+  });
 
   useEffect(() => {
     if (searchParams.get("auth") === "required") {
@@ -79,40 +98,72 @@ function HomeContent() {
         </div>
       </section>
 
-      {/* Featured quizzes */}
+      {/* About Section */}
+      <section className="bg-white py-24 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">Why Choose QuizShazam?</h2>
+            <p className="text-slate-500 max-w-2xl mx-auto text-lg">
+              We provide a comprehensive platform for learners and experts alike to challenge themselves and grow.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+            {ABOUT_FEATURES.map((feature, idx) => (
+              <div key={idx} className="flex flex-col items-center text-center p-6 rounded-3xl hover:bg-slate-50 transition-colors">
+                <div className="w-16 h-16 rounded-2xl bg-white shadow-md flex items-center justify-center mb-6">
+                  {feature.icon}
+                </div>
+                <h3 className="text-xl font-bold text-slate-800 mb-3">{feature.title}</h3>
+                <p className="text-slate-500 leading-relaxed">{feature.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Dynamic Quizzes Section */}
       <section className="px-6 py-20 max-w-5xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 gap-4">
           <div>
-            <p className="text-violet-700 font-semibold uppercase tracking-widest text-xs mb-2">Featured</p>
-            <h2 className="text-3xl font-extrabold text-slate-900">Challenge Yourself</h2>
-            <p className="text-slate-500 mt-2">Handpicked quizzes to put your skills to the test.</p>
+            <p className="text-violet-700 font-semibold uppercase tracking-widest text-xs mb-2">Explore</p>
+            <h2 className="text-3xl font-extrabold text-slate-900">Available Quizzes</h2>
+            <p className="text-slate-500 mt-2">Pick a topic and start your journey towards mastery.</p>
           </div>
           <Link href="/dashboard" className="inline-flex items-center gap-1 text-violet-700 font-semibold text-sm hover:gap-2 transition-all">
             See all quizzes <IoArrowForward />
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          {FEATURED.map((quiz, i) => (
-            <div key={i} className="card-lift bg-white rounded-2xl p-6 border border-violet-50 shadow-sm relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-br from-violet-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
-              <div className="relative z-10">
-                <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-violet-100 text-violet-700 mb-4">
-                  {quiz.tag}
-                </span>
-                <h4 className="font-bold text-slate-800 text-lg mb-2">{quiz.title}</h4>
-                <p className="text-slate-500 text-sm mb-5 leading-relaxed">{quiz.desc}</p>
-                <div className="flex items-center justify-between">
-                  <p className="text-violet-700 text-sm flex items-center gap-1.5 font-medium">
-                    <SlBadge /> Top: {quiz.score}%
-                  </p>
-                  <Link href="/dashboard" className="w-8 h-8 flex items-center justify-center rounded-full bg-violet-100 text-violet-700 hover:bg-violet-700 hover:text-white transition">
-                    <IoArrowForward size={14} />
-                  </Link>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {isLoading ? (
+            Array(3).fill(0).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+                <Skeleton active paragraph={{ rows: 3 }} />
+              </div>
+            ))
+          ) : (
+            quizzes?.slice(0, 6).map((quiz, i) => (
+              <div key={i} className="card-lift bg-white rounded-2xl p-6 border border-violet-50 shadow-sm relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
+                <div className="relative z-10">
+                  <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-violet-100 text-violet-700 mb-4">
+                    Quiz
+                  </span>
+                  <h4 className="font-bold text-slate-800 text-lg mb-2">{quiz.title}</h4>
+                  <p className="text-slate-500 text-sm mb-5 leading-relaxed line-clamp-2">{quiz.description}</p>
+                  <div className="flex items-center justify-between mt-auto">
+                    <p className="text-violet-700 text-xs flex items-center gap-1.5 font-medium">
+                      <SlBadge /> Ready to start
+                    </p>
+                    <Link href={`/login`} className="w-8 h-8 flex items-center justify-center rounded-full bg-violet-100 text-violet-700 hover:bg-violet-700 hover:text-white transition">
+                      <IoArrowForward size={14} />
+                    </Link>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </section>
 
