@@ -140,7 +140,7 @@ export default function Header() {
               </Link>
               <Link
                 href="/register"
-                className="text-sm font-semibold bg-gradient-to-r from-violet-700 to-indigo-500 text-white px-5 py-2 rounded-full hover:opacity-90 transition shadow-sm shadow-violet-100"
+                className="text-sm font-semibold bg-linear-to-r from-violet-700 to-indigo-500 text-white px-5 py-2 rounded-full hover:opacity-90 transition shadow-sm shadow-violet-100"
               >
                 Get Started
               </Link>
