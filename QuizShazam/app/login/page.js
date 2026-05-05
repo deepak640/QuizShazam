@@ -119,26 +119,26 @@ export default function Login() {
                 <IoArrowBackOutline size={16} /> Back to login
               </button>
 
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-violet-100 rounded-2xl flex items-center justify-center">
-                  <IoShieldCheckmarkOutline size={24} className="text-violet-600" />
+              <div className="flex items-center gap-3 mb-6 md:mb-8">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-violet-100 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0">
+                  <IoShieldCheckmarkOutline size={22} className="text-violet-600 md:size-24" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-extrabold text-slate-900">Two-Factor Auth</h2>
-                  <p className="text-slate-500 text-sm">Enter the code from your authenticator app</p>
+                  <h2 className="text-xl md:text-2xl font-extrabold text-slate-900">Two-Factor Auth</h2>
+                  <p className="text-slate-500 text-xs md:text-sm">Enter the code from your authenticator app</p>
                 </div>
               </div>
 
-              <form onSubmit={handleOTPSubmit} className="space-y-5">
+              <form onSubmit={handleOTPSubmit} className="space-y-6">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">6-digit verification code</label>
+                  <label className="block text-xs md:text-sm font-semibold text-slate-700 mb-2 md:mb-1.5 text-center sm:text-left">6-digit verification code</label>
                   <input
                     type="text" inputMode="numeric" maxLength={6}
                     value={otpCode} onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                     placeholder="000000" autoFocus
-                    className="w-full border-2 border-slate-100 bg-slate-50 rounded-xl px-4 py-4 text-2xl font-mono tracking-[0.6em] text-center focus:ring-2 focus:ring-violet-300 focus:border-violet-300 focus:bg-white transition"
+                    className="w-full border-2 border-slate-100 bg-slate-50 rounded-xl px-4 py-4 text-2xl md:text-3xl font-mono tracking-[0.4em] md:tracking-[0.6em] text-center focus:ring-2 focus:ring-violet-300 focus:border-violet-300 focus:bg-white transition"
                   />
-                  <p className="text-xs text-slate-400 mt-2 text-center">
+                  <p className="text-[10px] md:text-xs text-slate-400 mt-3 text-center leading-relaxed px-4">
                     Open Google Authenticator or Authy and enter the current code
                   </p>
                 </div>

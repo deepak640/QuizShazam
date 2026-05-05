@@ -173,15 +173,15 @@ function SecurityTab({ profile, token }) {
       {ctx}
 
       {/* Password section */}
-      <div className="bg-slate-50 rounded-2xl border border-slate-200/60 p-5">
-        <div className="flex items-start justify-between gap-4">
+      <div className="bg-slate-50 rounded-2xl border border-slate-200/60 p-4 md:p-5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 bg-violet-100 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
               <IoLockClosedOutline size={18} className="text-violet-600" />
             </div>
             <div>
               <p className="text-sm font-bold text-slate-800">Password</p>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
                 {profile.password ? "Change your current password via a reset link sent to your email." : "You signed in with Google. Set a password to enable email login."}
               </p>
             </div>
@@ -189,7 +189,7 @@ function SecurityTab({ profile, token }) {
           <button
             onClick={() => sendMail({ values: { email: profile.email }, token })}
             disabled={mailPending}
-            className="shrink-0 px-4 py-2 text-xs font-semibold text-violet-700 bg-white border border-violet-200 rounded-xl hover:bg-violet-50 transition disabled:opacity-50"
+            className="w-full sm:w-auto shrink-0 px-4 py-2 text-xs font-semibold text-violet-700 bg-white border border-violet-200 rounded-xl hover:bg-violet-50 transition disabled:opacity-50 text-center"
           >
             {mailPending ? "Sending…" : profile.password ? "Change Password" : "Set Password"}
           </button>
@@ -236,49 +236,49 @@ function SecurityTab({ profile, token }) {
 
         {/* ── QR / Verify step ── */}
         {twoFAStep === "verify" && (
-          <div className="border border-violet-100 bg-violet-50/40 rounded-2xl p-6 space-y-5">
-            <div className="flex items-start gap-3 p-3.5 bg-amber-50 border border-amber-200/60 rounded-xl text-xs text-amber-700">
+          <div className="border border-violet-100 bg-violet-50/40 rounded-2xl p-4 md:p-6 space-y-6 md:space-y-5">
+            <div className="flex items-start gap-3 p-3 md:p-3.5 bg-amber-50 border border-amber-200/60 rounded-xl text-[10px] md:text-xs text-amber-700 leading-relaxed">
               <IoAlertCircleOutline size={16} className="shrink-0 mt-0.5" />
               <p>Scan the QR code below with <strong>Google Authenticator</strong> or <strong>Authy</strong>, then enter the 6-digit code to confirm.</p>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-6">
+            <div className="flex flex-col lg:flex-row items-center lg:items-start gap-8 md:gap-6">
               {/* QR */}
               <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm shrink-0">
-                <img src={qrCode} alt="2FA QR Code" className="w-40 h-40" />
+                <img src={qrCode} alt="2FA QR Code" className="w-40 h-40 md:w-48 md:h-48 lg:w-40 lg:h-40" />
               </div>
 
               {/* Manual key + verify input */}
-              <div className="flex-1 space-y-4 w-full">
+              <div className="flex-1 space-y-5 w-full">
                 <div>
-                  <p className="text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1.5">
+                  <p className="text-[10px] md:text-xs font-semibold text-slate-600 mb-2 flex items-center gap-1.5">
                     <IoQrCodeOutline size={13} /> Manual entry key
                   </p>
-                  <code className="block bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-700 tracking-widest break-all">
+                  <code className="block bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-mono text-slate-700 tracking-wider break-all text-center lg:text-left">
                     {secret}
                   </code>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1.5">
+                  <label className="block text-[10px] md:text-xs font-semibold text-slate-600 mb-2 flex items-center gap-1.5 justify-center lg:justify-start">
                     <IoPhonePortraitOutline size={13} /> Enter 6-digit code from your app
                   </label>
                   <input
                     value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                     placeholder="000000" maxLength={6}
-                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-lg font-mono tracking-[0.4em] text-center focus:outline-none focus:ring-2 focus:ring-violet-300"
+                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-2xl font-mono tracking-[0.4em] text-center focus:outline-none focus:ring-2 focus:ring-violet-300"
                   />
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <button onClick={() => { setTwoFAStep("idle"); setCode(""); }}
-                    className="flex-1 py-2.5 text-sm font-semibold border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition">
+                    className="order-2 sm:order-1 flex-1 py-3 text-sm font-semibold border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition">
                     Cancel
                   </button>
                   <button
                     onClick={() => runEnable2FA({ values: { code }, token })}
                     disabled={code.length !== 6 || enablePending}
-                    className="flex-1 py-2.5 text-sm font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:from-violet-700 hover:to-indigo-700 disabled:opacity-50 transition"
+                    className="order-1 sm:order-2 flex-1 py-3 text-sm font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:from-violet-700 hover:to-indigo-700 disabled:opacity-50 transition shadow-md shadow-violet-100"
                   >
                     {enablePending ? "Verifying…" : "Confirm & Enable"}
                   </button>
@@ -303,26 +303,26 @@ function SecurityTab({ profile, token }) {
 
             {!showDisable ? (
               <button onClick={() => setShowDisable(true)}
-                className="text-xs font-semibold text-red-500 hover:text-red-700 hover:underline transition">
+                className="inline-block text-xs font-semibold text-red-500 hover:text-red-700 hover:underline transition">
                 Disable 2FA
               </button>
             ) : (
-              <div className="space-y-3 pt-1">
-                <p className="text-xs text-slate-600">Enter your current authenticator code to confirm disabling 2FA:</p>
+              <div className="space-y-4 pt-1 max-w-sm">
+                <p className="text-xs text-slate-600 leading-relaxed">Enter your current authenticator code to confirm disabling 2FA:</p>
                 <input
                   value={disableCode} onChange={(e) => setDisableCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   placeholder="000000" maxLength={6}
-                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-lg font-mono tracking-[0.4em] text-center focus:outline-none focus:ring-2 focus:ring-red-300 max-w-xs"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-xl font-mono tracking-[0.4em] text-center focus:outline-none focus:ring-2 focus:ring-red-300"
                 />
-                <div className="flex gap-2 max-w-xs">
+                <div className="flex gap-2">
                   <button onClick={() => { setShowDisable(false); setDisableCode(""); }}
-                    className="flex-1 py-2 text-xs font-semibold border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition">
+                    className="flex-1 py-2.5 text-xs font-semibold border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition">
                     Cancel
                   </button>
                   <button
                     onClick={() => runDisable2FA({ values: { code: disableCode }, token })}
                     disabled={disableCode.length !== 6 || disablePending}
-                    className="flex-1 py-2 text-xs font-semibold bg-red-500 text-white rounded-xl hover:bg-red-600 disabled:opacity-50 transition"
+                    className="flex-1 py-2.5 text-xs font-semibold bg-red-500 text-white rounded-xl hover:bg-red-600 disabled:opacity-50 transition shadow-sm"
                   >
                     {disablePending ? "Disabling…" : "Disable"}
                   </button>
