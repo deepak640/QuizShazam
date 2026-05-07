@@ -1,58 +1,35 @@
 var Quiz = require("../model/quiz");
 var jwt = require("jsonwebtoken");
-var https = require("https");
+var axios = require("axios");
 var bcrypt = require("bcryptjs");
 var User = require("../model/user");
 var Question = require("../model/question");
 var userModel = require("../model/user");
 const { default: mongoose } = require("mongoose");
 
-const sendEmail = (toEmail, link, type) => {
-  const payload = JSON.stringify({
-    sender: { name: "QuizShazam", email: "ayushdeepnegi@gmail.com" },
-    to: [{ email: toEmail }],
-    ...(type === "password_reset"
-      ? { templateId: 2, params: { password_link: link } }
-      : { templateId: 3, params: { share_link: link } }),
-  });
-
-  const options = {
-    hostname: "api.brevo.com",
-    path: "/v3/smtp/email",
-    method: "POST",
-    headers: {
-      "api-key": process.env.BREVO_API_KEY,
-      "Content-Type": "application/json",
-      "Content-Length": Buffer.byteLength(payload),
-    },
-    timeout: 15000,
-  };
-
-  return new Promise((resolve, reject) => {
-    const req = https.request(options, (res) => {
-      let data = "";
-      res.on("data", (chunk) => (data += chunk));
-      res.on("end", () => {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          console.log("Email sent successfully:", data);
-          resolve(data);
-        } else {
-          console.error("Brevo API error:", res.statusCode, data);
-          reject(new Error(`Brevo returned ${res.statusCode}: ${data}`));
-        }
-      });
-    });
-    req.on("timeout", () => {
-      req.destroy();
-      reject(new Error("Brevo request timed out after 15s"));
-    });
-    req.on("error", (err) => {
-      console.error("Error sending email:", err.message);
-      reject(err);
-    });
-    req.write(payload);
-    req.end();
-  }).catch((err) => console.error("Email failed:", err.message));
+const sendEmail = async (toEmail, link, type) => {
+  try {
+    await axios.post(
+      "https://api.brevo.com/v3/smtp/email",
+      {
+        sender: { name: "QuizShazam", email: "ayushdeepnegi@gmail.com" },
+        to: [{ email: toEmail }],
+        ...(type === "password_reset"
+          ? { templateId: 2, params: { password_link: link } }
+          : { templateId: 3, params: { share_link: link } }),
+      },
+      {
+        headers: {
+          "api-key": process.env.BREVO_API_KEY,
+          "Content-Type": "application/json",
+        },
+        timeout: 15000,
+      }
+    );
+    console.log("Email sent successfully to", toEmail);
+  } catch (error) {
+    console.error("Error sending email:", error.response?.data || error.message);
+  }
 };
 
 const getAllusers = async (req, res) => {
