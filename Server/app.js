@@ -35,13 +35,9 @@ app.use(bodyparser.urlencoded({ limit: "50mb", extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json({ limit: "50mb" }));
-const options = {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-};
 var port = process.env.PORT || "3000";
 mongoose
-  .connect(process.env.MONGO_URI, options)
+  .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("Successfully connected to MongoDB");
   })
