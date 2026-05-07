@@ -1,45 +1,58 @@
 var Quiz = require("../model/quiz");
 var jwt = require("jsonwebtoken");
-var SibApiV3Sdk = require("sib-api-v3-sdk");
+var https = require("https");
 var bcrypt = require("bcryptjs");
 var User = require("../model/user");
 var Question = require("../model/question");
 var userModel = require("../model/user");
 const { default: mongoose } = require("mongoose");
 
-const sendEmail = async (toEmail, link, type) => {
-  try {
-    let defaultClient = SibApiV3Sdk.ApiClient.instance;
-    let apiKey = defaultClient.authentications["api-key"];
-    apiKey.apiKey = process.env.BREVO_API_KEY;
+const sendEmail = (toEmail, link, type) => {
+  const payload = JSON.stringify({
+    sender: { name: "QuizShazam", email: "ayushdeepnegi@gmail.com" },
+    to: [{ email: toEmail }],
+    ...(type === "password_reset"
+      ? { templateId: 2, params: { password_link: link } }
+      : { templateId: 3, params: { share_link: link } }),
+  });
 
-    let apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+  const options = {
+    hostname: "api.brevo.com",
+    path: "/v3/smtp/email",
+    method: "POST",
+    headers: {
+      "api-key": process.env.BREVO_API_KEY,
+      "Content-Type": "application/json",
+      "Content-Length": Buffer.byteLength(payload),
+    },
+    timeout: 15000,
+  };
 
-    let sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
-    sendSmtpEmail.to = [{ email: toEmail }];
-    sendSmtpEmail.sender = { name: "quizShazam", email: "ayushdeepnegi@gmail.com" }; // Must be verified in Brevo
-
-    // **Use the Email Template**
-    if (type === 'password_reset') {
-      sendSmtpEmail.templateId = 2; // Replace with your Brevo Template ID
-
-      sendSmtpEmail.params = {
-        password_link: link, // Matches the variable used in your template
-      };
-    }
-    if (type === "Share") {
-      sendSmtpEmail.templateId = 3; // Replace with your Brevo Template ID
-      sendSmtpEmail.params = {
-        share_link: link, // Matches the variable used in your template
-      };
-
-    }
-
-    let response = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log("Email sent successfully:", response);
-  } catch (error) {
-    console.error("Error sending email:", error);
-  }
+  return new Promise((resolve, reject) => {
+    const req = https.request(options, (res) => {
+      let data = "";
+      res.on("data", (chunk) => (data += chunk));
+      res.on("end", () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          console.log("Email sent successfully:", data);
+          resolve(data);
+        } else {
+          console.error("Brevo API error:", res.statusCode, data);
+          reject(new Error(`Brevo returned ${res.statusCode}: ${data}`));
+        }
+      });
+    });
+    req.on("timeout", () => {
+      req.destroy();
+      reject(new Error("Brevo request timed out after 15s"));
+    });
+    req.on("error", (err) => {
+      console.error("Error sending email:", err.message);
+      reject(err);
+    });
+    req.write(payload);
+    req.end();
+  }).catch((err) => console.error("Email failed:", err.message));
 };
 
 const getAllusers = async (req, res) => {
