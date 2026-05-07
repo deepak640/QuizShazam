@@ -71,7 +71,7 @@ const sendResetLink = async (req, res) => {
     });
 
     const password_link = `${process.env.CLIENT_URL}/reset-password/${token}`;
-    sendEmail(email, password_link, type = "password_reset");
+    await sendEmail(email, password_link, "password_reset");
     return res.json({ message: "Email sent successfully", link: password_link });
   } catch (error) {
     res.status(500).send({ message: "Error processing request", error });
@@ -259,7 +259,7 @@ const shareQuiz = async (req, res) => {
     console.log(quizId, "quizId")
     await Promise.all(
       await users.map(async (mail) => {
-        await sendEmail(mail, `${process.env.CLIENT_URL}/dashboard/quiz/${quizId}`, type = "Share");
+        await sendEmail(mail, `${process.env.CLIENT_URL}/dashboard/quiz/${quizId}`, "Share");
       }))
     res.json({ message: "Email sent successfully" })
   } catch (error) {
