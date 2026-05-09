@@ -109,41 +109,41 @@ export default function Login() {
 
       {/* Right form panel */}
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white">
-        <div className="w-full max-w-md fade-up">
+        <div className="w-full max-w-md fade-up flex flex-col items-center">
 
           {/* ── 2FA Step ── */}
           {twoFARequired ? (
-            <div>
+            <div className="w-[90%] mx-auto">
               <button onClick={() => { setTwoFARequired(false); setOtpCode(""); setTempToken(""); }}
-                className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-6 transition">
-                <IoArrowBackOutline size={16} /> Back to login
+                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 mb-6 transition">
+                <IoArrowBackOutline size={14} /> Back to login
               </button>
 
               <div className="flex items-center gap-3 mb-6 md:mb-8">
                 <div className="w-10 h-10 md:w-12 md:h-12 bg-violet-100 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0">
-                  <IoShieldCheckmarkOutline size={22} className="text-violet-600 md:size-24" />
+                  <IoShieldCheckmarkOutline size={20} className="text-violet-600 md:size-22" />
                 </div>
                 <div>
-                  <h2 className="text-xl md:text-2xl font-extrabold text-slate-900">Two-Factor Auth</h2>
-                  <p className="text-slate-500 text-xs md:text-sm">Enter the code from your authenticator app</p>
+                  <h2 className="text-lg md:text-xl font-extrabold text-slate-900">Two-Factor Auth</h2>
+                  <p className="text-slate-500 text-[11px] md:text-xs">Enter the code from your authenticator app</p>
                 </div>
               </div>
 
               <form onSubmit={handleOTPSubmit} className="space-y-6">
                 <div>
-                  <label className="block text-xs md:text-sm font-semibold text-slate-700 mb-2 md:mb-1.5 text-center sm:text-left">6-digit verification code</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-2 md:mb-1.5 text-center sm:text-left">6-digit verification code</label>
                   <input
                     type="text" inputMode="numeric" maxLength={6}
                     value={otpCode} onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                     placeholder="000000" autoFocus
-                    className="w-full border-2 border-slate-100 bg-slate-50 rounded-xl px-4 py-4 text-2xl md:text-3xl font-mono tracking-[0.4em] md:tracking-[0.6em] text-center focus:ring-2 focus:ring-violet-300 focus:border-violet-300 focus:bg-white transition"
+                    className="w-full border-2 border-slate-100 bg-slate-50 rounded-xl px-4 py-3 text-xl md:text-2xl font-mono tracking-[0.4em] md:tracking-[0.6em] text-center focus:ring-2 focus:ring-violet-300 focus:border-violet-300 focus:bg-white transition"
                   />
-                  <p className="text-[10px] md:text-xs text-slate-400 mt-3 text-center leading-relaxed px-4">
+                  <p className="text-[10px] text-slate-400 mt-3 text-center leading-relaxed px-4">
                     Open Google Authenticator or Authy and enter the current code
                   </p>
                 </div>
                 <button type="submit" disabled={otpCode.length !== 6 || otpLoading}
-                  className="w-full bg-gradient-to-r from-violet-700 to-indigo-500 text-white py-3.5 rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-50 shadow-lg shadow-violet-200 text-sm">
+                  className="w-full bg-gradient-to-r from-violet-700 to-indigo-500 text-white py-3 rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-50 shadow-lg shadow-violet-200 text-xs">
                   {otpLoading ? "Verifying…" : "Verify & Sign In"}
                 </button>
               </form>
@@ -151,65 +151,67 @@ export default function Login() {
 
           ) : (
             /* ── Normal login step ── */
-            <>
-              <div className="mb-8">
-                <h2 className="text-3xl font-extrabold text-slate-900 mb-1">Sign In</h2>
-                <p className="text-slate-500 text-sm">Enter your credentials to access your account</p>
+            <div className="w-full flex flex-col items-center">
+              <div className="mb-8 w-[90%]">
+                <h2 className="text-2xl font-extrabold text-slate-900 mb-1 text-center">Sign In</h2>
+                <p className="text-slate-500 text-xs text-center">Enter your credentials to access your account</p>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
+              <form onSubmit={handleSubmit} className="space-y-4 w-[90%]">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email address</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email address</label>
                   <input
                     type="email" name="email" value={values.email} onChange={handleChange}
                     required placeholder="you@example.com" autoComplete="off"
-                    className="w-full border-2 border-slate-100 bg-slate-50 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-violet-300 focus:border-violet-300 focus:bg-white transition"
+                    className="w-full border-2 border-slate-100 bg-slate-50 rounded-xl px-4 py-2.5 text-[13px] focus:ring-2 focus:ring-violet-300 focus:border-violet-300 focus:bg-white transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Password</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Password</label>
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"} name="password" value={values.password}
                       onChange={handleChange} required placeholder="••••••••" autoComplete="off"
-                      className="w-full border-2 border-slate-100 bg-slate-50 rounded-xl px-4 py-3 pr-11 text-sm focus:ring-2 focus:ring-violet-300 focus:border-violet-300 focus:bg-white transition"
+                      className="w-full border-2 border-slate-100 bg-slate-50 rounded-xl px-4 py-2.5 pr-11 text-[13px] focus:ring-2 focus:ring-violet-300 focus:border-violet-300 focus:bg-white transition"
                     />
                     <button type="button" onClick={() => setShowPassword((s) => !s)}
                       className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition">
-                      {showPassword ? <IoEyeOffOutline size={18} /> : <IoEyeOutline size={18} />}
+                      {showPassword ? <IoEyeOffOutline size={16} /> : <IoEyeOutline size={16} />}
                     </button>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
+                  <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
                     <input type="checkbox" checked={isRemember} onChange={(e) => setRemember(e.target.checked)}
-                      className="w-4 h-4 rounded accent-violet-700" />
+                      className="w-3.5 h-3.5 rounded accent-violet-700" />
                     Remember me
                   </label>
-                  <Link href="#" className="text-sm text-violet-700 hover:underline font-medium">Forgot password?</Link>
+                  <Link href="#" className="text-xs text-violet-700 hover:underline font-medium">Forgot password?</Link>
                 </div>
 
                 <button type="submit" disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-violet-700 to-indigo-500 text-white py-3.5 rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-50 shadow-lg shadow-violet-200 text-sm">
+                  className="w-full bg-gradient-to-r from-violet-700 to-indigo-500 text-white py-3 rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-50 shadow-lg shadow-violet-200 text-xs">
                   {isLoading ? "Signing in…" : "Sign In"}
                 </button>
               </form>
 
-              <div className="mt-6 space-y-4">
+              <div className="mt-6 space-y-4 w-[90%]">
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-px bg-slate-100" />
-                  <span className="text-xs text-slate-400 font-medium">or continue with</span>
+                  <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">or continue with</span>
                   <div className="flex-1 h-px bg-slate-100" />
                 </div>
-                <GoogleButton handleClick={SignInWithGoogle} isLoading={isLoading} />
-                <p className="text-center text-sm text-slate-500">
+                <div className="flex justify-center">
+                  <GoogleButton handleClick={SignInWithGoogle} isLoading={isLoading} className="w-full" />
+                </div>
+                <p className="text-center text-xs text-slate-500">
                   No account yet?{" "}
                   <Link href="/register" className="text-violet-700 font-semibold hover:underline">Create one</Link>
                 </p>
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>

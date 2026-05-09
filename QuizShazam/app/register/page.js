@@ -91,28 +91,28 @@ export default function Register() {
 
       {/* Right form panel */}
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white">
-        <div className="w-full max-w-md fade-up">
-          <div className="mb-8">
-            <h2 className="text-3xl font-extrabold text-slate-900 mb-1">Create Account</h2>
-            <p className="text-slate-500 text-sm">It's free and takes less than a minute</p>
+        <div className="w-full max-w-md fade-up flex flex-col items-center">
+          <div className="mb-8 w-[90%]">
+            <h2 className="text-2xl font-extrabold text-slate-900 mb-1 text-center">Create Account</h2>
+            <p className="text-slate-500 text-xs text-center">It's free and takes less than a minute</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4 w-[90%]">
             {fields.map((field) => (
               <div key={field.name}>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">{field.label}</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">{field.label}</label>
                 <div className="relative">
                   <input
                     type={field.type} name={field.name} value={values[field.name]}
                     onChange={handleChange} required placeholder={field.placeholder} autoComplete="off"
-                    className="w-full border-2 border-slate-100 bg-slate-50 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-violet-300 focus:border-violet-300 focus:bg-white transition"
+                    className="w-full border-2 border-slate-100 bg-slate-50 rounded-xl px-4 py-2.5 text-[13px] focus:ring-2 focus:ring-violet-300 focus:border-violet-300 focus:bg-white transition"
                   />
                   {field.name === "password" && (
                     <button
                       type="button" onClick={() => setShowPassword((s) => !s)}
                       className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
                     >
-                      {showPassword ? <IoEyeOffOutline size={18} /> : <IoEyeOutline size={18} />}
+                      {showPassword ? <IoEyeOffOutline size={16} /> : <IoEyeOutline size={16} />}
                     </button>
                   )}
                 </div>
@@ -121,20 +121,22 @@ export default function Register() {
 
             <button
               type="submit" disabled={isLoading || !!data}
-              className="w-full bg-gradient-to-r from-violet-700 to-indigo-500 text-white py-3.5 rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-50 shadow-lg shadow-violet-200 text-sm"
+              className="w-full bg-gradient-to-r from-violet-700 to-indigo-500 text-white py-3 rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-50 shadow-lg shadow-violet-200 text-xs"
             >
               {isLoading ? "Creating account…" : "Create Account"}
             </button>
           </form>
 
-          <div className="mt-6 space-y-4">
+          <div className="mt-6 space-y-4 w-[90%]">
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px bg-slate-100" />
-              <span className="text-xs text-slate-400 font-medium">or sign up with</span>
+              <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">or sign up with</span>
               <div className="flex-1 h-px bg-slate-100" />
             </div>
-            <GoogleButton handleClick={SignInWithGoogle} isLoading={isLoading || !!data} />
-            <p className="text-center text-sm text-slate-500">
+            <div className="flex justify-center">
+              <GoogleButton handleClick={SignInWithGoogle} isLoading={isLoading || !!data} className="w-full" />
+            </div>
+            <p className="text-center text-xs text-slate-500">
               Already have an account?{" "}
               <Link href="/login" className="text-violet-700 font-semibold hover:underline">Sign in</Link>
             </p>

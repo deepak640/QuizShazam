@@ -1,121 +1,24 @@
 "use client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
-import { message, Modal } from "antd";
+import { message } from "antd";
 import dynamic from "next/dynamic";
-import { useRef, useState } from "react";
 import Loader from "@/components/Loader";
-import { getProfile, mailPasswordLink, userStats, updateProfile } from "@/lib/api";
+import { getProfile, userStats } from "@/lib/api";
 import {
   IoArrowForward, IoTrophyOutline, IoBarChartOutline, IoBookOutline,
-  IoSettingsOutline, IoCameraOutline, IoPersonOutline, IoCallOutline,
-  IoInformationCircleOutline,
+  IoPersonOutline, IoCallOutline,
 } from "react-icons/io5";
 
 const BarChart = dynamic(() => import("@/components/BarChart"), { ssr: false });
-
-function EditProfileModal({ profile, token, onClose }) {
-  const queryClient = useQueryClient();
-  const [messageApi, ctx] = message.useMessage();
-  const [username, setUsername] = useState(profile.username || "");
-  const [bio, setBio] = useState(profile.bio || "");
-  const [phone, setPhone] = useState(profile.phone || "");
-  const [preview, setPreview] = useState(profile.photoURL || "");
-  const [file, setFile] = useState(null);
-  const inputRef = useRef(null);
-
-  const { mutate, isPending } = useMutation({
-    mutationFn: updateProfile,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-      messageApi.success("Profile updated!");
-      setTimeout(onClose, 800);
-    },
-    onError: (e) => messageApi.error(e.response?.data?.error || "Update failed"),
-  });
-
-  const handleFile = (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
-  };
-
-  const handleSave = () => {
-    const fd = new FormData();
-    fd.append("username", username);
-    fd.append("bio", bio);
-    fd.append("phone", phone);
-    if (file) fd.append("photo", file);
-    mutate({ values: fd, token });
-  };
-
-  return (
-    <Modal open onCancel={onClose} footer={null} width={480} title={
-      <div className="flex items-center gap-2 py-1">
-        <IoPersonOutline size={18} className="text-violet-600" />
-        <span className="font-semibold text-slate-800">Edit Profile</span>
-      </div>
-    }>
-      {ctx}
-      <div className="space-y-5 py-2">
-        {/* Avatar upload */}
-        <div className="flex justify-center">
-          <div className="relative">
-            <img src={preview} alt="avatar" className="w-20 h-20 rounded-2xl object-cover border-4 border-violet-100" />
-            <button
-              onClick={() => inputRef.current?.click()}
-              className="absolute -bottom-1 -right-1 w-7 h-7 bg-violet-600 rounded-full flex items-center justify-center text-white shadow"
-            >
-              <IoCameraOutline size={14} />
-            </button>
-            <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1.5">Username</label>
-          <input value={username} onChange={(e) => setUsername(e.target.value)}
-            className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1.5">Bio</label>
-          <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={2}
-            placeholder="Tell us about yourself…"
-            className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 resize-none" />
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1.5">Phone</label>
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 XXXXX XXXXX"
-            className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
-        </div>
-
-        <div className="flex gap-3 pt-1">
-          <button onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50">
-            Cancel
-          </button>
-          <button onClick={handleSave} disabled={isPending}
-            className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-semibold disabled:opacity-50 hover:from-violet-700 hover:to-indigo-700">
-            {isPending ? "Saving…" : "Save Changes"}
-          </button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
 
 export default function Profile() {
   const { token } = JSON.parse(Cookies.get("user") || "{}");
   const router = useRouter();
   const [messageApi, contextHolder] = message.useMessage();
-  const [editOpen, setEditOpen] = useState(false);
 
   const { data: userData, isLoading } = useQuery({ queryKey: ["profile", { token }], queryFn: getProfile });
-  const { mutate: sendMail } = useMutation({ mutationFn: mailPasswordLink });
   const obj = { userid: userData?.profile._id };
   const { data: stats } = useQuery({
     queryKey: ["stats", { token, obj }],
@@ -126,23 +29,12 @@ export default function Profile() {
   if (isLoading) return <Loader />;
   const { profile, quizzes } = userData;
 
-  const handleSendMail = () => {
-    sendMail(
-      { values: { email: profile.email }, token },
-      {
-        onSuccess: (d) => messageApi.success(d.message),
-        onError: (e) => messageApi.error(e.response?.data?.error),
-      }
-    );
-  };
-
   const bestScore = stats?.length ? Math.max(...stats.map((s) => s.score || 0)) : 0;
   const avgScore = stats?.length ? Math.round(stats.reduce((a, s) => a + (s.score || 0), 0) / stats.length) : 0;
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 space-y-8">
       {contextHolder}
-      {editOpen && <EditProfileModal profile={profile} token={token} onClose={() => setEditOpen(false)} />}
 
       {/* Profile hero card */}
       <div className="relative bg-gradient-to-r from-violet-700 to-indigo-500 rounded-3xl p-8 overflow-hidden shadow-xl shadow-violet-200">
@@ -167,23 +59,6 @@ export default function Profile() {
                 {quizzes.length} quiz{quizzes.length !== 1 ? "zes" : ""} completed
               </span>
             </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-            <button onClick={() => setEditOpen(true)}
-              className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition">
-              <IoCameraOutline size={16} /> Edit Profile
-            </button>
-            <button onClick={() => router.push("/settings")}
-              className="flex items-center gap-1.5 bg-white text-violet-700 font-semibold text-sm px-4 py-2.5 rounded-xl hover:bg-violet-50 transition shadow-sm">
-              <IoSettingsOutline size={16} /> Settings
-            </button>
-            {!profile.password && (
-              <button onClick={handleSendMail}
-                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition border border-white/20">
-                Set Password
-              </button>
-            )}
           </div>
         </div>
       </div>
