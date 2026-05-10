@@ -105,3 +105,9 @@ export const validate2FALogin = async (values) => {
   const res = await axios.post(`${API_URL}/users/2fa/validate`, values);
   return res.data;
 };
+
+export const getWeakTopics = async ({ queryKey }) => {
+  const [, { token }] = queryKey;
+  const res = await axios.get(`${API_URL}/analytics/weak-topics`, { headers: authHeader(token) });
+  return res.data;
+};

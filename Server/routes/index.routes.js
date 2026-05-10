@@ -4,7 +4,7 @@ var Quiz = require("../model/quiz");
 var Question = require("../model/question");
 var userModel = require("../model/user");
 var Authentication = require("../middleware/auth");
-const { getAllusers, getById, sendResetLink, resetPassword, getUserStats, createSession, getAllsession, getAllQuizzes, shareQuiz } = require("../controller/index.controller");
+const { getAllusers, getById, sendResetLink, resetPassword, getUserStats, createSession, getAllsession, getAllQuizzes, shareQuiz, updateQuestion, getFailedQuestions, getWeakTopics } = require("../controller/index.controller");
 
 /* GET home page. */
 router.get("/", function (req, res, next) {
@@ -29,6 +29,10 @@ router.post("/create-quiz", Authentication, async (req, res) => {
                 questionText: q.questionText,
                 options: q.options,
                 quiz: quiz._id,
+                explanation: q.explanation || null,
+                referenceLink: q.referenceLink || null,
+                topic: q.topic || null,
+                difficulty: ["easy", "medium", "hard"].includes(q.difficulty) ? q.difficulty : "easy",
               });
               await question.save();
               quiz.questions.push(question);
@@ -91,6 +95,10 @@ router.post("/share-quiz",Authentication,shareQuiz)
 router.post("/create-assessment", createSession)
 
 router.get("/getAllsession", getAllsession)
+
+router.put("/question/:id", Authentication, updateQuestion)
+router.get("/analytics/failed-questions", Authentication, getFailedQuestions)
+router.get("/analytics/weak-topics", Authentication, getWeakTopics)
 
 router.delete("/quiz/:id", Authentication, async (req, res) => {
   const { id } = req.params;

@@ -3,8 +3,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Cookies from "js-cookie";
 import Loader from "@/components/Loader";
-import { getResult } from "@/lib/api";
-import { IoArrowBack, IoCheckmarkCircle, IoCloseCircle, IoTrophyOutline, IoTimeOutline, IoStarOutline } from "react-icons/io5";
+import { getResult, getWeakTopics } from "@/lib/api";
+import { IoArrowBack, IoCheckmarkCircle, IoCloseCircle, IoTrophyOutline, IoTimeOutline, IoStarOutline, IoBookOutline, IoLinkOutline } from "react-icons/io5";
 
 const RADIUS = 52;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
@@ -20,9 +20,15 @@ export default function ResultPage() {
   const router = useRouter();
   const { token } = JSON.parse(Cookies.get("user") || "{}");
   const { data, isLoading } = useQuery({ queryKey: ["results", { id, token }], queryFn: getResult });
+  const { data: topicsData } = useQuery({
+    queryKey: ["weakTopics", { token }],
+    queryFn: getWeakTopics,
+    enabled: !!token,
+  });
 
   if (isLoading) return <Loader />;
   const { answers, quiz, score } = data;
+  const weakTopics = topicsData?.weakTopics ?? [];
 
   const total = answers.length;
   const correct = answers.filter((a) => {
@@ -125,6 +131,33 @@ export default function ResultPage() {
                 <span className="text-[11px] text-red-400 font-medium">{wrong} wrong</span>
               </div>
             </div>
+
+            {/* Weak topics */}
+            {weakTopics.length > 0 && (
+              <div className="bg-white rounded-2xl border border-slate-200/70 p-4 shadow-sm">
+                <p className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-1.5">
+                  <IoBookOutline size={13} className="text-violet-500" /> Your Weak Topics
+                </p>
+                <div className="space-y-2.5">
+                  {weakTopics.slice(0, 5).map((t) => (
+                    <div key={t.topic}>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-[11px] font-medium text-slate-700 truncate">{t.topic}</span>
+                        <span className={`text-[11px] font-bold ml-2 shrink-0 ${t.accuracy < 40 ? "text-red-500" : t.accuracy < 65 ? "text-amber-500" : "text-emerald-500"}`}>
+                          {t.accuracy}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${t.accuracy < 40 ? "bg-red-400" : t.accuracy < 65 ? "bg-amber-400" : "bg-emerald-400"}`}
+                          style={{ width: `${t.accuracy}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </aside>
 
           {/* ── Right: Q&A review ─────────────────────────────────────── */}
@@ -209,6 +242,26 @@ export default function ResultPage() {
                         );
                       })}
                     </ul>
+
+                    {/* Explanation — only rendered when data exists */}
+                    {answer.questionId.explanation && (
+                      <div className="mx-4 mb-4 rounded-xl bg-violet-50 border border-violet-100 p-4">
+                        <p className="flex items-center gap-1.5 text-xs font-bold text-violet-700 mb-1.5">
+                          <IoBookOutline size={13} /> Explanation
+                        </p>
+                        <p className="text-xs text-violet-800 leading-relaxed">{answer.questionId.explanation}</p>
+                        {answer.questionId.referenceLink && (
+                          <a
+                            href={answer.questionId.referenceLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-violet-600 hover:text-violet-800 transition"
+                          >
+                            <IoLinkOutline size={12} /> Learn more
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}

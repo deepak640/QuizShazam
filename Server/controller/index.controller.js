@@ -1,4 +1,5 @@
 var Quiz = require("../model/quiz");
+var Response = require("../model/response");
 var jwt = require("jsonwebtoken");
 var axios = require("axios");
 var bcrypt = require("bcryptjs");
@@ -177,6 +178,10 @@ const createSession = async (req, res) => {
                 questionText: q.questionText,
                 options: q.options,
                 quiz: quiz._id,
+                explanation: q.explanation || null,
+                referenceLink: q.referenceLink || null,
+                topic: q.topic || null,
+                difficulty: ["easy", "medium", "hard"].includes(q.difficulty) ? q.difficulty : "easy",
               });
               await question.save();
               quiz.questions.push(question);
@@ -268,6 +273,134 @@ const shareQuiz = async (req, res) => {
   }
 }
 
+const updateQuestion = async (req, res) => {
+  const { id } = req.params;
+  const { explanation, referenceLink, topic, difficulty } = req.body;
+  try {
+    const update = {};
+    if (explanation !== undefined) update.explanation = explanation || null;
+    if (referenceLink !== undefined) update.referenceLink = referenceLink || null;
+    if (topic !== undefined) update.topic = topic || null;
+    if (difficulty !== undefined && ["easy", "medium", "hard"].includes(difficulty)) update.difficulty = difficulty;
+
+    const question = await Question.findByIdAndUpdate(id, update, { new: true });
+    if (!question) return res.status(404).send({ message: "Question not found" });
+    res.status(200).send(question);
+  } catch (error) {
+    res.status(500).send({ message: "Error updating question", error });
+  }
+};
+
+const getFailedQuestions = async (req, res) => {
+  try {
+    const minAttempts = parseInt(req.query.minAttempts) || 1;
+    const threshold = parseInt(req.query.threshold) || 70;
+
+    const results = await Response.aggregate([
+      { $unwind: "$answers" },
+      {
+        $lookup: {
+          from: "questions",
+          localField: "answers.questionId",
+          foreignField: "_id",
+          as: "question",
+        },
+      },
+      { $unwind: "$question" },
+      {
+        $addFields: {
+          selectedOpt: { $arrayElemAt: ["$question.options", "$answers.selectedOption"] },
+        },
+      },
+      {
+        $addFields: {
+          isCorrect: { $eq: ["$selectedOpt.isCorrect", true] },
+        },
+      },
+      {
+        $group: {
+          _id: "$answers.questionId",
+          questionText: { $first: "$question.questionText" },
+          topic: { $first: "$question.topic" },
+          difficulty: { $first: "$question.difficulty" },
+          explanation: { $first: "$question.explanation" },
+          totalAttempts: { $sum: 1 },
+          wrongAttempts: { $sum: { $cond: ["$isCorrect", 0, 1] } },
+        },
+      },
+      {
+        $addFields: {
+          failureRate: {
+            $round: [{ $multiply: [{ $divide: ["$wrongAttempts", "$totalAttempts"] }, 100] }, 0],
+          },
+        },
+      },
+      { $match: { failureRate: { $gte: threshold }, totalAttempts: { $gte: minAttempts } } },
+      { $sort: { failureRate: -1 } },
+      { $limit: 20 },
+    ]);
+
+    res.status(200).send(results);
+  } catch (error) {
+    console.error("getFailedQuestions error:", error.message, error.stack);
+    res.status(500).send({ message: "Error retrieving analytics", error: error.message });
+  }
+};
+
+const getWeakTopics = async (req, res) => {
+  try {
+    const matchStage = {};
+    // ?global=true → admin view (all users). Otherwise scope to the logged-in user.
+    if (req.query.global !== "true") {
+      matchStage.user = req.user.id;
+    }
+
+    const results = await Response.aggregate([
+      { $match: matchStage },
+      { $unwind: "$answers" },
+      {
+        $lookup: {
+          from: "questions",
+          localField: "answers.questionId",
+          foreignField: "_id",
+          as: "question",
+        },
+      },
+      { $unwind: "$question" },
+      { $match: { "question.topic": { $ne: null, $exists: true } } },
+      {
+        $addFields: {
+          selectedOpt: { $arrayElemAt: ["$question.options", "$answers.selectedOption"] },
+        },
+      },
+      {
+        $addFields: {
+          isCorrect: { $eq: ["$selectedOpt.isCorrect", true] },
+        },
+      },
+      {
+        $group: {
+          _id: "$question.topic",
+          total: { $sum: 1 },
+          correct: { $sum: { $cond: ["$isCorrect", 1, 0] } },
+        },
+      },
+      {
+        $addFields: {
+          accuracy: { $round: [{ $multiply: [{ $divide: ["$correct", "$total"] }, 100] }, 0] },
+        },
+      },
+      { $sort: { accuracy: 1 } },
+    ]);
+
+    const weakTopics = results.map((r) => ({ topic: r._id, accuracy: r.accuracy, total: r.total }));
+    res.status(200).send({ weakTopics });
+  } catch (error) {
+    console.error("getWeakTopics error:", error.message, error.stack);
+    res.status(500).send({ message: "Error retrieving weak topics", error: error.message });
+  }
+};
+
 module.exports = {
   getAllusers,
   getById,
@@ -277,5 +410,8 @@ module.exports = {
   getUserStats,
   getAllsession,
   sendResetLink,
-  resetPassword
+  resetPassword,
+  updateQuestion,
+  getFailedQuestions,
+  getWeakTopics,
 }

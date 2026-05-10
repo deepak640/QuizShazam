@@ -6,6 +6,10 @@ const questionSchema = new Schema({
   options: [{ text: String, isCorrect: Boolean }],
   quiz: { type: Schema.Types.ObjectId, ref: "Quiz" },
   createdAt: { type: Date, default: Date.now },
+  explanation: { type: String, default: null },
+  referenceLink: { type: String, default: null },
+  topic: { type: String, default: null },
+  difficulty: { type: String, enum: ["easy", "medium", "hard"], default: "easy" },
 });
 
 const Question = mongoose.model("Question", questionSchema);

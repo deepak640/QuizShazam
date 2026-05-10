@@ -5,7 +5,7 @@ import Link from "next/link";
 import Cookies from "js-cookie";
 import { Modal } from "antd";
 import Chatbot from "./Chatbot";
-import { IoFlashOutline, IoPersonOutline, IoChatbubbleEllipsesOutline, IoLogOutOutline, IoMenuOutline, IoCloseOutline, IoSettingsOutline } from "react-icons/io5";
+import { IoFlashOutline, IoPersonOutline, IoChatbubbleEllipsesOutline, IoLogOutOutline, IoMenuOutline, IoCloseOutline, IoSettingsOutline, IoBookOutline } from "react-icons/io5";
 
 export default function Header() {
   const [user, setUser] = useState(null);
@@ -138,6 +138,13 @@ export default function Header() {
                     onClick={() => setNavActive(false)}
                   >
                     <IoSettingsOutline size={17} className="text-slate-400" /> Settings
+                  </Link>
+                  <Link
+                    href="/dashboard"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-violet-50 hover:text-violet-700 transition md:block hidden"
+                    onClick={() => setNavActive(false)}
+                  >
+                    <IoBookOutline size={17} className="text-slate-400" /> Browse Quizzes
                   </Link>
                   <button
                     className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-slate-700 hover:bg-violet-50 hover:text-violet-700 transition"
