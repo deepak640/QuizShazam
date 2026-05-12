@@ -10,6 +10,7 @@ const questionSchema = new Schema({
   referenceLink: { type: String, default: null },
   topic: { type: String, default: null },
   difficulty: { type: String, enum: ["easy", "medium", "hard"], default: "easy" },
+  isMultiSelect: { type: Boolean, default: false },
 });
 
 const Question = mongoose.model("Question", questionSchema);

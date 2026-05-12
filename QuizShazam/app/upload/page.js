@@ -105,7 +105,7 @@ export default function Upload() {
           </button>
         </div>
         {jsonData && (
-          <p className="text-green-600 text-sm">✓ Parsed {jsonData.length} quiz(zes) — click "Post Quiz" to save.</p>
+          <p className="text-green-600 text-sm">✓ Parsed {jsonData.length} quiz(zes) — click &quot;Post Quiz&quot; to save.</p>
         )}
       </div>
     </div>

@@ -94,7 +94,7 @@ export default function Register() {
         <div className="w-full max-w-md fade-up flex flex-col items-center">
           <div className="mb-8 w-[90%]">
             <h2 className="text-2xl font-extrabold text-slate-900 mb-1 text-center">Create Account</h2>
-            <p className="text-slate-500 text-xs text-center">It's free and takes less than a minute</p>
+            <p className="text-slate-500 text-xs text-center">It&apos;s free and takes less than a minute</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4 w-[90%]">

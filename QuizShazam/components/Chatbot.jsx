@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { chat } from "@/lib/api";
 import Cookies from "js-cookie";
@@ -17,29 +17,25 @@ export default function Chatbot() {
     return data ? JSON.parse(data).token : null;
   };
 
-  const allSuggestions = [
+  const allSuggestions = useMemo(() => [
     "What is my score?",
     "Mera score kya hai?",
     "Who am I?",
     "Available quizzes",
     "Who is the developer?",
     "Namaste"
-  ];
+  ], []);
 
-  const [suggestions, setSuggestions] = useState([]);
-
-  useEffect(() => {
+  const suggestions = useMemo(() => {
     if (!input.trim()) {
-      setSuggestions(allSuggestions.slice(0, 3));
-    } else {
-      const filtered = allSuggestions.filter(s => 
-        s.toLowerCase().includes(input.toLowerCase())
-      );
-      setSuggestions(filtered.slice(0, 3));
+      return allSuggestions.slice(0, 3);
     }
-  }, [input]);
+    return allSuggestions
+      .filter(s => s.toLowerCase().includes(input.toLowerCase()))
+      .slice(0, 3);
+  }, [input, allSuggestions]);
 
-  const processSend = (text) => {
+  const processSend = useCallback((text) => {
     if (!text.trim()) return;
     setMessages((prev) => [...prev, { sender: "user", text }]);
     setInput("");
@@ -61,13 +57,13 @@ export default function Chatbot() {
             updated.pop();
             const errorMsg = error.response?.status === 401 
               ? "Please log in to chat with me! 🔐" 
-              : "Oops! I'm having trouble connecting. Please try again later.";
+              : "Oops! I&apos;m having trouble connecting. Please try again later.";
             return [...updated, { sender: "bot", text: errorMsg }];
           });
         },
       }
     );
-  };
+  }, [sendChat]);
 
   const handleSend = () => processSend(input);
 

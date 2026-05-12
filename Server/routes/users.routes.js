@@ -9,6 +9,7 @@ const {
   HomeRoute, register, login, googleLogin, userResult, quizSubmission,
   userProfile, quizMatrix, aiChat, userQuestion,
   updateProfile, setup2FA, enable2FA, disable2FA, validate2FALogin,
+  getUserHistory,
 } = require("../controller/user.controller");
 
 const storage = multer.memoryStorage();
@@ -28,6 +29,9 @@ router.get("/profile", Authentication, userProfile);
 router.put("/profile", Authentication, uploadPhoto, updateProfile);
 router.get("/total-quizMatrix", Authentication, quizMatrix);
 router.post("/chat", Authentication, aiChat);
+
+// Admin: view any user's quiz history
+router.get("/history/:userId", Authentication, getUserHistory);
 
 // 2FA routes
 router.post("/2fa/setup", Authentication, setup2FA);

@@ -4,7 +4,7 @@ var Quiz = require("../model/quiz");
 var Question = require("../model/question");
 var userModel = require("../model/user");
 var Authentication = require("../middleware/auth");
-const { getAllusers, getById, sendResetLink, resetPassword, getUserStats, createSession, getAllsession, getAllQuizzes, shareQuiz, updateQuestion, getFailedQuestions, getWeakTopics } = require("../controller/index.controller");
+const { getAllusers, getById, sendResetLink, resetPassword, getUserStats, createSession, getAllsession, getAllQuizzes, shareQuiz, updateQuestion, getFailedQuestions, getWeakTopics, getUserPerformanceSummary, getSettings, updateSettings } = require("../controller/index.controller");
 
 /* GET home page. */
 router.get("/", function (req, res, next) {
@@ -16,7 +16,9 @@ router.post("/create-quiz", Authentication, async (req, res) => {
   try {
     const quizzes = await Promise.all(
       array.map(async ({ title, description, questions, authorId }) => {
-        const quiz = new Quiz({ title, description, author: authorId });
+        const subjectName = title;
+        const existingCount = await Quiz.countDocuments({ subject: subjectName, isDeleted: { $ne: true } });
+        const quiz = new Quiz({ title: `Test ${existingCount + 1}`, subject: subjectName, description, author: authorId });
         await quiz.save();
 
         await Promise.all(
@@ -33,6 +35,7 @@ router.post("/create-quiz", Authentication, async (req, res) => {
                 referenceLink: q.referenceLink || null,
                 topic: q.topic || null,
                 difficulty: ["easy", "medium", "hard"].includes(q.difficulty) ? q.difficulty : "easy",
+                isMultiSelect: !!q.isMultiSelect,
               });
               await question.save();
               quiz.questions.push(question);
@@ -56,7 +59,7 @@ router.get("/quizzes", Authentication, getAllQuizzes);
 
 router.get("/getAllQuizzes", async (req, res) => {
   try {
-    const quizzes = await Quiz.find();
+    const quizzes = await Quiz.find({ isDeleted: { $ne: true } });
     res.status(200).send(quizzes);
   } catch (error) {
     console.log("🚀 ~ router.get ~ error:", error)
@@ -99,19 +102,39 @@ router.get("/getAllsession", getAllsession)
 router.put("/question/:id", Authentication, updateQuestion)
 router.get("/analytics/failed-questions", Authentication, getFailedQuestions)
 router.get("/analytics/weak-topics", Authentication, getWeakTopics)
+router.get("/analytics/user-performance", Authentication, getUserPerformanceSummary)
+
+// Settings
+router.get("/settings", getSettings)
+router.put("/settings", Authentication, updateSettings)
+
 
 router.delete("/quiz/:id", Authentication, async (req, res) => {
   const { id } = req.params;
   try {
     const quiz = await Quiz.findById(id);
     if (!quiz) return res.status(404).send({ message: "Quiz not found" });
-    await Question.deleteMany({ quiz: id });
-    await Quiz.findByIdAndDelete(id);
-    res.status(200).send({ message: "Quiz deleted successfully" });
+    quiz.isDeleted = true;
+    quiz.deletedAt = new Date();
+    await quiz.save();
+    res.status(200).send({ message: "Quiz archived successfully" });
   } catch (error) {
-    console.log("🚀 ~ router.delete ~ error:", error);
-    res.status(500).send({ message: "Error deleting quiz", error });
+    res.status(500).send({ message: "Error archiving quiz", error });
   }
-})
+});
+
+router.patch("/quiz/:id/restore", Authentication, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const quiz = await Quiz.findById(id);
+    if (!quiz) return res.status(404).send({ message: "Quiz not found" });
+    quiz.isDeleted = false;
+    quiz.deletedAt = null;
+    await quiz.save();
+    res.status(200).send({ message: "Quiz restored successfully" });
+  } catch (error) {
+    res.status(500).send({ message: "Error restoring quiz", error });
+  }
+});
 
 module.exports = router;

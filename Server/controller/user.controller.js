@@ -158,7 +158,19 @@ const quizSubmission = async (req, res) => {
 
     for (let answer of answers) {
       const question = await Question.findById(answer.questionId);
-      if (question) {
+      if (!question) continue;
+
+      if (question.isMultiSelect) {
+        const correctIndices = question.options
+          .map((opt, i) => (opt.isCorrect ? i : -1))
+          .filter((i) => i !== -1);
+        const selected = Array.isArray(answer.selectedOptions) ? answer.selectedOptions : [];
+        const allCorrectSelected = correctIndices.every((i) => selected.includes(i));
+        const noWrongSelected = selected.every((i) => correctIndices.includes(i));
+        if (correctIndices.length > 0 && allCorrectSelected && noWrongSelected) {
+          score += 1;
+        }
+      } else {
         const correctOption = question.options.find((opt) => opt.isCorrect);
         if (
           correctOption &&
@@ -170,6 +182,7 @@ const quizSubmission = async (req, res) => {
         }
       }
     }
+
     const response = new Response({
       user: userId,
       quiz: quizId,
@@ -191,11 +204,10 @@ const userProfile = async (req, res) => {
 
   try {
     const profile = await User.findById(userID);
-    console.log("🚀 ~ router.get ~ profile:", profile)
-    let quizzes = [];
-    for (let quiz of profile.quizzesTaken) {
-      let info = await Quiz.findById(quiz._id);
-      quizzes.push(info);
+    const quizzes = [];
+    for (const quizId of profile.quizzesTaken) {
+      const info = await Quiz.findById(quizId);
+      if (info) quizzes.push(info);
     }
     res.json({ profile, quizzes });
   } catch (error) {
@@ -614,6 +626,24 @@ const validate2FALogin = async (req, res) => {
   }
 };
 
+const getUserHistory = async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const responses = await Response.find({ user: userId })
+      .populate("quiz", "title isDeleted")
+      .populate({
+        path: "answers.questionId",
+        select: "questionText options explanation referenceLink topic difficulty",
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json({ responses });
+  } catch (error) {
+    console.error("getUserHistory error:", error.message);
+    res.status(500).json({ message: "Error retrieving user history", error: error.message });
+  }
+};
+
 module.exports = {
   HomeRoute,
   register,
@@ -630,4 +660,5 @@ module.exports = {
   enable2FA,
   disable2FA,
   validate2FALogin,
+  getUserHistory,
 }

@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Cookies from "js-cookie";
 import Link from "next/link";
-import { IoArrowForward, IoCheckmarkCircle, IoSearchOutline } from "react-icons/io5";
+import { IoSearchOutline, IoArrowForward } from "react-icons/io5";
 import dynamic from "next/dynamic";
 import Loader from "@/components/Loader";
 import { getQuizzes } from "@/lib/api";
@@ -11,14 +11,21 @@ import { useState } from "react";
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
-const COLORS = ["from-violet-600 to-indigo-500", "from-indigo-500 to-cyan-500", "from-pink-500 to-rose-500", "from-emerald-500 to-teal-500", "from-orange-500 to-amber-500", "from-violet-700 to-indigo-600"];
+const SUBJECT_THEMES = [
+  { bg: "from-violet-600 to-indigo-500", light: "bg-violet-50", border: "border-violet-100", text: "text-violet-700", badge: "bg-violet-100 text-violet-700", bar: "bg-violet-500" },
+  { bg: "from-blue-500 to-cyan-500", light: "bg-blue-50", border: "border-blue-100", text: "text-blue-700", badge: "bg-blue-100 text-blue-700", bar: "bg-blue-500" },
+  { bg: "from-emerald-500 to-teal-500", light: "bg-emerald-50", border: "border-emerald-100", text: "text-emerald-700", badge: "bg-emerald-100 text-emerald-700", bar: "bg-emerald-500" },
+  { bg: "from-amber-500 to-orange-500", light: "bg-amber-50", border: "border-amber-100", text: "text-amber-700", badge: "bg-amber-100 text-amber-700", bar: "bg-amber-500" },
+  { bg: "from-rose-500 to-pink-500", light: "bg-rose-50", border: "border-rose-100", text: "text-rose-700", badge: "bg-rose-100 text-rose-700", bar: "bg-rose-500" },
+  { bg: "from-fuchsia-500 to-violet-500", light: "bg-fuchsia-50", border: "border-fuchsia-100", text: "text-fuchsia-700", badge: "bg-fuchsia-100 text-fuchsia-700", bar: "bg-fuchsia-500" },
+];
 
 export default function Dashboard() {
   const [search, setSearch] = useState("");
   const { token } = JSON.parse(Cookies.get("user") || "{}");
   const { data, isLoading } = useQuery({
     queryKey: ["quizzes", { token }],
-    queryFn: getQuizzes
+    queryFn: getQuizzes,
   });
 
   if (isLoading) return <Loader />;
@@ -33,27 +40,41 @@ export default function Dashboard() {
     );
   }
 
-  const filtered = quizzes.filter((q) =>
-    q.title?.toLowerCase().includes(search.toLowerCase()) ||
-    q.description?.toLowerCase().includes(search.toLowerCase())
-  );
+  const takenIds = quizzesTaken?.quizzesTaken || [];
+  const takenCount = takenIds.length;
 
-  const takenCount = quizzesTaken?.quizzesTaken?.length || 0;
+  // Group by subject
+  const grouped = {};
+  quizzes.forEach((q) => {
+    const key = q.subject?.trim() || "General";
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(q);
+  });
+
+  const subjects = Object.keys(grouped).sort((a, b) => {
+    if (a === "General") return 1;
+    if (b === "General") return -1;
+    return a.localeCompare(b);
+  });
+
+  const filteredSubjects = subjects.filter((s) =>
+    s.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-10">
-      {/* Page header */}
-      <div className="mb-10">
+      {/* Header */}
+      <div className="mb-8">
         <p className="text-violet-700 font-semibold uppercase tracking-widest text-xs mb-1">Explore</p>
-        <h2 className="text-3xl font-extrabold text-slate-900 mb-1">Available Quizzes</h2>
-        <p className="text-slate-500 text-sm">{quizzes.length} quizzes · {takenCount} completed</p>
+        <h2 className="text-3xl font-extrabold text-slate-900 mb-1">Quiz Library</h2>
+        <p className="text-slate-500 text-sm">{subjects.length} subject{subjects.length !== 1 ? "s" : ""} · {quizzes.length} tests · {takenCount} completed</p>
       </div>
 
       {/* Progress bar */}
       <div className="mb-8 bg-white rounded-2xl border border-violet-50 shadow-sm p-5 flex items-center gap-5">
         <div className="flex-1">
           <div className="flex justify-between text-xs text-slate-500 mb-2">
-            <span className="font-medium text-slate-700">Your progress</span>
+            <span className="font-medium text-slate-700">Overall progress</span>
             <span>{takenCount} / {quizzes.length} completed</span>
           </div>
           <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
@@ -76,92 +97,95 @@ export default function Dashboard() {
         <IoSearchOutline className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
         <input
           type="text"
-          placeholder="Search quizzes..."
+          placeholder="Search subjects..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-violet-300 focus:border-violet-300 transition shadow-sm"
         />
       </div>
 
-      {/* Quiz grid / List */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {filtered.map((quiz, i) => {
-          const isTaken = quizzesTaken?.quizzesTaken?.includes(quiz._id);
-          const colorClass = COLORS[i % COLORS.length];
+      {/* Subject cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {filteredSubjects.map((subject, i) => {
+          const subjectQuizzes = grouped[subject];
+          const theme = SUBJECT_THEMES[i % SUBJECT_THEMES.length];
+          const completedCount = subjectQuizzes.filter((q) => takenIds.includes(q._id)).length;
+          const progress = subjectQuizzes.length ? Math.round((completedCount / subjectQuizzes.length) * 100) : 0;
+          const totalQ = subjectQuizzes.reduce((s, q) => s + (q.questions?.length || 0), 0);
+
           return (
-            <div
-              key={i}
-              className={`group relative bg-white rounded-2xl border shadow-sm overflow-hidden transition-all duration-300 ${
-                isTaken ? "border-slate-100 opacity-80" : "border-violet-50 card-lift"
-              }`}
+            <Link
+              key={subject}
+              href={`/dashboard/${encodeURIComponent(subject)}`}
+              className="group block bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 overflow-hidden"
             >
-              {/* Desktop: Color accent bar at top */}
-              <div className={`hidden sm:block h-1.5 bg-gradient-to-r ${colorClass}`} />
+              {/* Top accent */}
+              <div className={`h-1.5 bg-gradient-to-r ${theme.bg}`} />
 
-              <div className="p-4 sm:p-6">
-                {/* Mobile: Horizontal Layout | Desktop: Vertical Layout */}
-                <div className="flex sm:flex-col gap-4 sm:gap-0">
-                  
-                  {/* Icon/Thumbnail */}
-                  <div className={`shrink-0 w-16 h-16 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br ${colorClass} flex items-center justify-center text-white font-bold text-lg sm:text-base shadow-lg shadow-violet-200/50 sm:mb-4`}>
-                    {quiz.title?.charAt(0) || "Q"}
+              <div className="p-5">
+                {/* Icon row */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${theme.bg} flex items-center justify-center shadow-md`}>
+                    <span className="text-white font-extrabold text-lg">{subject.charAt(0)}</span>
                   </div>
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${theme.badge}`}>
+                    {subjectQuizzes.length} test{subjectQuizzes.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-1 sm:mb-2">
-                      <h5 className="font-bold text-slate-800 text-sm sm:text-base truncate leading-snug pr-2">
-                        {quiz.title}
-                      </h5>
-                      {isTaken && (
-                        <IoCheckmarkCircle className="text-emerald-500 shrink-0 mt-0.5" size={16} />
-                      )}
-                    </div>
+                {/* Subject name */}
+                <h3 className={`text-base font-extrabold mb-0.5 group-hover:${theme.text} transition-colors text-slate-800`}>
+                  {subject} Exams
+                </h3>
+                <p className="text-xs text-slate-500 mb-4">{totalQ} question{totalQ !== 1 ? "s" : ""} total</p>
 
-                    <p className="text-slate-500 text-[11px] sm:text-sm mb-3 sm:mb-4 line-clamp-1 sm:line-clamp-2 leading-relaxed">
-                      {quiz.description}
-                    </p>
+                {/* Progress */}
+                <div className="mb-1 flex justify-between text-[11px] text-slate-500">
+                  <span>{completedCount}/{subjectQuizzes.length} done</span>
+                  <span className={`font-semibold ${theme.text}`}>{progress}%</span>
+                </div>
+                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-4">
+                  <div
+                    className={`h-full ${theme.bar} rounded-full transition-all duration-700`}
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
 
-                    <div className="flex items-center justify-between mt-auto">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] sm:text-xs text-slate-400 font-medium">
-                          {quiz.questions?.length || 0} Questions
-                        </span>
-                        <div className="w-1 h-1 rounded-full bg-slate-200" />
-                        <span className="text-[10px] sm:text-xs text-slate-400">
-                          By {quiz.author?.split(" ")[0] || "Admin"}
-                        </span>
+                {/* Test list preview */}
+                <div className="space-y-1 mb-4">
+                  {subjectQuizzes.slice(0, 3).map((q) => {
+                    const done = takenIds.includes(q._id);
+                    return (
+                      <div key={q._id} className="flex items-center gap-2 text-xs text-slate-600">
+                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${done ? "bg-emerald-400" : theme.bar}`} />
+                        <span className={`truncate ${done ? "line-through text-slate-400" : ""}`}>{q.title}</span>
+                        {done && <span className="text-emerald-500 shrink-0 text-[10px] font-semibold">Done</span>}
                       </div>
+                    );
+                  })}
+                  {subjectQuizzes.length > 3 && (
+                    <p className={`text-[11px] font-semibold ${theme.text} pl-3.5`}>+{subjectQuizzes.length - 3} more</p>
+                  )}
+                </div>
 
-                      {!isTaken && (
-                        <Link
-                          href={`/dashboard/quiz/${quiz._id}`}
-                          className={`flex items-center justify-center w-8 h-8 sm:w-auto sm:px-4 sm:py-1.5 rounded-full bg-gradient-to-r ${colorClass} text-white transition-transform active:scale-95 shadow-md shadow-violet-200/50`}
-                        >
-                          <span className="hidden sm:inline text-xs font-bold mr-1">Start</span>
-                          <IoArrowForward size={14} />
-                        </Link>
-                      )}
-                    </div>
-                  </div>
+                {/* CTA */}
+                <div className={`flex items-center justify-between pt-3 border-t ${theme.border}`}>
+                  <span className="text-xs text-slate-400">
+                    {completedCount === subjectQuizzes.length && subjectQuizzes.length > 0 ? "All completed!" : `${subjectQuizzes.length - completedCount} remaining`}
+                  </span>
+                  <span className={`flex items-center gap-1 text-xs font-bold ${theme.text} group-hover:gap-2 transition-all`}>
+                    {completedCount === subjectQuizzes.length && subjectQuizzes.length > 0 ? "Review" : "Start"} <IoArrowForward size={13} />
+                  </span>
                 </div>
               </div>
-
-              {/* Mobile: Finished Indicator */}
-              {isTaken && (
-                <div className="sm:hidden absolute top-0 right-0">
-                   <div className="bg-emerald-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-bl-lg">
-                     DONE
-                   </div>
-                </div>
-              )}
-            </div>
+            </Link>
           );
         })}
       </div>
 
-      {filtered.length === 0 && search && (
+      {filteredSubjects.length === 0 && search && (
         <div className="text-center py-16 text-slate-400">
-          <p className="text-lg font-medium mb-1">No results for "{search}"</p>
+          <p className="text-lg font-medium mb-1">No results for &quot;{search}&quot;</p>
           <p className="text-sm">Try a different keyword</p>
         </div>
       )}

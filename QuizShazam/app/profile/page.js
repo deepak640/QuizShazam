@@ -90,14 +90,17 @@ export default function Profile() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {quizzes.map((q, i) => (
               <button key={i} onClick={() => router.push(`/profile/quiz/${q._id}`)}
-                className="card-lift group text-left border border-slate-100 rounded-xl p-4 flex items-center justify-between gap-3 hover:border-violet-200 transition">
+                className={`card-lift group text-left border rounded-xl p-4 flex items-center justify-between gap-3 transition ${q.isDeleted ? "border-slate-100 opacity-60 hover:opacity-80" : "border-slate-100 hover:border-violet-200"}`}>
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${q.isDeleted ? "bg-slate-400" : "bg-gradient-to-br from-violet-600 to-indigo-500"}`}>
                     {q.title?.charAt(0) || "Q"}
                   </div>
                   <div className="min-w-0">
-                    <h4 className="font-semibold text-slate-700 text-sm truncate">{q.title}</h4>
-                    <p className="text-slate-400 text-xs truncate">{q.description}</p>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-slate-700 text-sm truncate">{q.title}</h4>
+                      {q.isDeleted && <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">Archived</span>}
+                    </div>
+                    <p className="text-slate-400 text-xs truncate">{q.isDeleted ? "This quiz has been archived" : q.description}</p>
                   </div>
                 </div>
                 <IoArrowForward className="text-slate-300 group-hover:text-violet-600 transition flex-shrink-0" />

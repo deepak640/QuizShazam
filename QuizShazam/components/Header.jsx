@@ -8,7 +8,13 @@ import Chatbot from "./Chatbot";
 import { IoFlashOutline, IoPersonOutline, IoChatbubbleEllipsesOutline, IoLogOutOutline, IoMenuOutline, IoCloseOutline, IoSettingsOutline, IoBookOutline } from "react-icons/io5";
 
 export default function Header() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const data = Cookies.get("user");
+      return data ? JSON.parse(data) : null;
+    }
+    return null;
+  });
   const [navActive, setNavActive] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -16,9 +22,6 @@ export default function Header() {
   const router = useRouter();
 
   useEffect(() => {
-    const data = Cookies.get("user");
-    if (data) setUser(JSON.parse(data));
-
     const handleScroll = () => setScrolled(window.scrollY > 10);
     const handleClickOutside = (e) => {
       if (window.innerWidth >= 768 && dropdownRef.current && !dropdownRef.current.contains(e.target)) {

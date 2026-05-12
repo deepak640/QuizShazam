@@ -111,3 +111,8 @@ export const getWeakTopics = async ({ queryKey }) => {
   const res = await axios.get(`${API_URL}/analytics/weak-topics`, { headers: authHeader(token) });
   return res.data;
 };
+
+export const getSettings = async () => {
+  const res = await axios.get(`${API_URL}/settings`);
+  return res.data;
+};

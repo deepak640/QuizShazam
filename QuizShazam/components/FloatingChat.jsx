@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { chat } from "@/lib/api";
 import Cookies from "js-cookie";
@@ -16,32 +16,29 @@ export default function FloatingChat() {
   });
 
   const getToken = () => {
+    if (typeof window === 'undefined') return null;
     const data = Cookies.get("user");
     return data ? JSON.parse(data).token : null;
   };
 
-  const allSuggestions = [
+  const allSuggestions = useMemo(() => [
     "What is my score?",
     "Show me available quizzes",
     "Who is the developer?",
     "Explain React Hooks",
     "How to use this platform?"
-  ];
+  ], []);
 
-  const [suggestions, setSuggestions] = useState([]);
-
-  useEffect(() => {
+  const suggestions = useMemo(() => {
     if (!input.trim()) {
-      setSuggestions(allSuggestions.slice(0, 3));
-    } else {
-      const filtered = allSuggestions.filter(s => 
-        s.toLowerCase().includes(input.toLowerCase())
-      );
-      setSuggestions(filtered.slice(0, 3));
+      return allSuggestions.slice(0, 3);
     }
-  }, [input]);
+    return allSuggestions
+      .filter(s => s.toLowerCase().includes(input.toLowerCase()))
+      .slice(0, 3);
+  }, [input, allSuggestions]);
 
-  const processSend = (text) => {
+  const processSend = useCallback((text) => {
     if (!text.trim() || isPending) return;
     
     const newMsg = { sender: "user", text };
@@ -57,12 +54,12 @@ export default function FloatingChat() {
         onError: (error) => {
           const errorMsg = error.response?.status === 401 
             ? "Please log in to chat with me! 🔐" 
-            : "Oops! I'm having trouble connecting. Please try again later.";
+            : "Oops! I&apos;m having trouble connecting. Please try again later.";
           setMessages((prev) => [...prev, { sender: "bot", text: errorMsg }]);
         },
       }
     );
-  };
+  }, [sendChat, isPending]);
 
   const handleSend = () => processSend(input);
 
@@ -77,7 +74,7 @@ export default function FloatingChat() {
     if (isOpen && messages.length === 0) {
       setMessages([{ 
         sender: "bot", 
-        text: "Hi! I'm your AI Quiz Assistant. How can I help you today? ✨" 
+        text: "Hi! I&apos;m your AI Quiz Assistant. How can I help you today? ✨" 
       }]);
     }
   }, [isOpen, messages.length]);

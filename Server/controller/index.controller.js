@@ -5,6 +5,7 @@ var axios = require("axios");
 var bcrypt = require("bcryptjs");
 var User = require("../model/user");
 var Question = require("../model/question");
+var Settings = require("../model/settings");
 var userModel = require("../model/user");
 const { default: mongoose } = require("mongoose");
 
@@ -165,7 +166,9 @@ const createSession = async (req, res) => {
     console.log(session, "session")
     const quizzes = await Promise.all(
       quiz.map(async ({ title, description, questions, authorId }) => {
-        const quiz = new Quiz({ title, description, author: authorId });
+        const subjectName = title;
+        const existingCount = await Quiz.countDocuments({ subject: subjectName, isDeleted: { $ne: true } });
+        const quiz = new Quiz({ title: `Test ${existingCount + 1}`, subject: subjectName, description, author: authorId });
         await quiz.save();
 
         await Promise.all(
@@ -182,6 +185,7 @@ const createSession = async (req, res) => {
                 referenceLink: q.referenceLink || null,
                 topic: q.topic || null,
                 difficulty: ["easy", "medium", "hard"].includes(q.difficulty) ? q.difficulty : "easy",
+                isMultiSelect: !!q.isMultiSelect,
               });
               await question.save();
               quiz.questions.push(question);
@@ -202,6 +206,7 @@ const getAllsession = async (req, res) => {
   let pipeline = []
   let matchObj = {}
   matchObj.expiresAt = { $exists: true }
+  matchObj.isDeleted = { $ne: true }
 
   pipeline.push(
     {
@@ -227,6 +232,7 @@ const getAllQuizzes = async (req, res) => {
     const { id } = req.user;
     let matchObj = {};
     matchObj.expiresAt = { $exists: false };
+    matchObj.isDeleted = { $ne: true };
     // Use aggregation pipeline to get quizzes with selected fields
     const quizzes = await Quiz.aggregate([
       {
@@ -235,6 +241,7 @@ const getAllQuizzes = async (req, res) => {
       {
         $project: {
           title: 1,
+          subject: 1,
           description: 1,
           questions: 1,
           createdAt: 1
@@ -401,6 +408,114 @@ const getWeakTopics = async (req, res) => {
   }
 };
 
+const getUserPerformanceSummary = async (req, res) => {
+  try {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const summary = await Response.aggregate([
+      {
+        $group: {
+          _id: "$user",
+          attempts: { $sum: 1 },
+          avgScore: { $avg: "$score" },
+          bestScore: { $max: "$score" },
+          lastAttempt: { $max: "$createdAt" },
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "userDetails",
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          username: { $arrayElemAt: ["$userDetails.username", 0] },
+          email: { $arrayElemAt: ["$userDetails.email", 0] },
+          attempts: 1,
+          avgScore: { $round: ["$avgScore", 1] },
+          bestScore: 1,
+          lastAttempt: 1,
+        },
+      },
+      { $sort: { attempts: -1 } },
+    ]);
+
+    // Time-based activity
+    const activity = await Response.aggregate([
+      {
+        $facet: {
+          today: [
+            { $match: { createdAt: { $gte: startOfToday } } },
+            { $group: { _id: null, count: { $sum: 1 }, avgScore: { $avg: "$score" } } }
+          ],
+          week: [
+            { $match: { createdAt: { $gte: startOfWeek } } },
+            { $group: { _id: null, count: { $sum: 1 }, avgScore: { $avg: "$score" } } }
+          ],
+          month: [
+            { $match: { createdAt: { $gte: startOfMonth } } },
+            { $group: { _id: null, count: { $sum: 1 }, avgScore: { $avg: "$score" } } }
+          ],
+          trend: [
+            { $match: { createdAt: { $gte: new Date(new Date().setDate(new Date().getDate() - 30)) } } },
+            {
+              $group: {
+                _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+                attempts: { $sum: 1 },
+                avgScore: { $avg: "$score" }
+              }
+            },
+            { $sort: { _id: 1 } }
+          ]
+        }
+      }
+    ]);
+
+    res.status(200).send({
+      userSummary: summary,
+      activity: activity[0]
+    });
+  } catch (error) {
+    console.error("getUserPerformanceSummary error:", error);
+    res.status(500).send({ message: "Error retrieving performance summary", error });
+  }
+};
+
+const getSettings = async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) settings = await Settings.create({});
+    res.json(settings);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching settings", error: error.message });
+  }
+};
+
+const updateSettings = async (req, res) => {
+  try {
+    const { quizTimerSeconds } = req.body;
+    const update = {};
+    if (quizTimerSeconds !== undefined) {
+      const val = parseInt(quizTimerSeconds);
+      if (isNaN(val) || val < 5 || val > 120) {
+        return res.status(400).json({ message: "Timer must be between 5 and 120 seconds" });
+      }
+      update.quizTimerSeconds = val;
+    }
+    let settings = await Settings.findOneAndUpdate({}, update, { new: true, upsert: true });
+    res.json(settings);
+  } catch (error) {
+    res.status(500).json({ message: "Error updating settings", error: error.message });
+  }
+};
+
 module.exports = {
   getAllusers,
   getById,
@@ -414,4 +529,7 @@ module.exports = {
   updateQuestion,
   getFailedQuestions,
   getWeakTopics,
+  getUserPerformanceSummary,
+  getSettings,
+  updateSettings,
 }

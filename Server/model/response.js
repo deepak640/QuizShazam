@@ -7,7 +7,8 @@ const responseSchema = new Schema({
   answers: [
     {
       questionId: { type: Schema.Types.ObjectId, ref: "Question" },
-      selectedOption: Number, // Index of the selected option
+      selectedOption: Number,        // single-select (legacy + current)
+      selectedOptions: [Number],     // multi-select: array of chosen indices
     },
   ],
   score: { type: Number },

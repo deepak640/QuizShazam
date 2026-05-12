@@ -31,10 +31,18 @@ export default function ResultPage() {
   const weakTopics = topicsData?.weakTopics ?? [];
 
   const total = answers.length;
-  const correct = answers.filter((a) => {
+  const isAnswerCorrect = (a) => {
+    if (a.questionId.isMultiSelect) {
+      const correctIndices = a.questionId.options.map((o, i) => o.isCorrect ? i : -1).filter(i => i !== -1);
+      const selected = Array.isArray(a.selectedOptions) ? a.selectedOptions : [];
+      return correctIndices.length > 0 &&
+        correctIndices.every(i => selected.includes(i)) &&
+        selected.every(i => correctIndices.includes(i));
+    }
     const correctIdx = a.questionId.options.findIndex((o) => o.isCorrect);
     return a.selectedOption === correctIdx;
-  }).length;
+  };
+  const correct = answers.filter(isAnswerCorrect).length;
   const wrong = total - correct;
   const pct = total ? Math.round((correct / total) * 100) : 0;
   const strokeDashoffset = CIRCUMFERENCE - (pct / 100) * CIRCUMFERENCE;
@@ -52,6 +60,17 @@ export default function ResultPage() {
         >
           <IoArrowBack size={16} /> Back to profile
         </button>
+
+        {/* Archived notice */}
+        {quiz.isDeleted && (
+          <div className="mb-5 flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200">
+            <span className="text-amber-500 text-base mt-0.5">⚠️</span>
+            <div>
+              <p className="text-sm font-semibold text-amber-800">This quiz has been archived</p>
+              <p className="text-xs text-amber-700 mt-0.5">The quiz is no longer active but your results and answers are preserved below.</p>
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-6 items-start">
 
@@ -110,7 +129,7 @@ export default function ResultPage() {
               <div className="bg-white rounded-2xl border border-slate-200/70 p-4 text-center shadow-sm">
                 <IoStarOutline className="text-violet-500 mx-auto mb-1" size={22} />
                 <p className="text-2xl font-black text-slate-800">{total}</p>
-                <p className="text-xs text-slate-400 font-medium">Total Q's</p>
+                <p className="text-xs text-slate-400 font-medium">Total Q&apos;s</p>
               </div>
             </div>
 
@@ -201,8 +220,9 @@ export default function ResultPage() {
             {/* Cards */}
             <div className="space-y-3">
               {answers.map((answer, i) => {
-                const correctIdx = answer.questionId.options.findIndex((o) => o.isCorrect);
-                const userCorrect = answer.selectedOption === correctIdx;
+                const userCorrect = isAnswerCorrect(answer);
+                const isMulti = answer.questionId.isMultiSelect;
+                const selectedArr = Array.isArray(answer.selectedOptions) ? answer.selectedOptions : [];
 
                 return (
                   <div key={i} className="bg-white rounded-2xl border border-slate-200/70 shadow-sm overflow-hidden">
@@ -211,25 +231,34 @@ export default function ResultPage() {
                       <span className={`mt-0.5 shrink-0 ${userCorrect ? "text-emerald-500" : "text-red-400"}`}>
                         {userCorrect ? <IoCheckmarkCircle size={18} /> : <IoCloseCircle size={18} />}
                       </span>
-                      <p className="font-semibold text-slate-800 text-sm leading-snug flex-1">
-                        <span className="text-slate-400 mr-1.5 font-normal">{i + 1}.</span>
-                        {answer.questionId.questionText}
-                      </p>
+                      <div className="flex-1 flex items-start justify-between gap-2">
+                        <p className="font-semibold text-slate-800 text-sm leading-snug flex-1">
+                          <span className="text-slate-400 mr-1.5 font-normal">{i + 1}.</span>
+                          {answer.questionId.questionText}
+                        </p>
+                        {isMulti && (
+                          <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 border border-indigo-200">
+                            ☑ Multi
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Options — 2-col grid on wide screens */}
                     <ul className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {answer.questionId.options.map((opt, j) => {
                         const isCorrect = opt.isCorrect;
-                        const isUserAnswer = j === answer.selectedOption;
+                        const isUserAnswer = isMulti ? selectedArr.includes(j) : j === answer.selectedOption;
                         let cls = "border-slate-100 text-slate-600 bg-slate-50/50";
-                        if (isCorrect) cls = "border-emerald-300 bg-emerald-50 text-emerald-700";
+                        if (isCorrect && isUserAnswer) cls = "border-emerald-300 bg-emerald-50 text-emerald-700";
+                        else if (isCorrect) cls = "border-emerald-200 bg-emerald-50/60 text-emerald-600";
                         else if (isUserAnswer) cls = "border-red-300 bg-red-50 text-red-600";
 
                         return (
                           <li key={j} className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl border text-sm font-medium ${cls}`}>
                             <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                              isCorrect ? "bg-emerald-200 text-emerald-700"
+                              isCorrect && isUserAnswer ? "bg-emerald-200 text-emerald-700"
+                              : isCorrect ? "bg-emerald-100 text-emerald-600"
                               : isUserAnswer ? "bg-red-200 text-red-600"
                               : "bg-slate-200 text-slate-400"
                             }`}>
