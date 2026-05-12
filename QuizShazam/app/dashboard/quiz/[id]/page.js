@@ -11,9 +11,6 @@ import { IoVideocamOffOutline, IoVideocamOutline, IoShieldCheckmarkOutline } fro
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
-const RADIUS = 30;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-
 // ── Camera widget ─────────────────────────────────────────────────────────────
 function CameraWidget() {
   const videoRef = useRef(null);
@@ -24,11 +21,7 @@ function CameraWidget() {
     if (!navigator.mediaDevices?.getUserMedia) { setStatus("denied"); return; }
     navigator.mediaDevices
       .getUserMedia({ video: { facingMode: "user" }, audio: false })
-      .then((s) => {
-        stream = s;
-        if (videoRef.current) videoRef.current.srcObject = s;
-        setStatus("active");
-      })
+      .then((s) => { stream = s; if (videoRef.current) videoRef.current.srcObject = s; setStatus("active"); })
       .catch(() => setStatus("denied"));
     return () => stream?.getTracks().forEach((t) => t.stop());
   }, []);
@@ -49,11 +42,7 @@ function CameraWidget() {
           <IoVideocamOutline className="text-slate-400" size={24} />
         </div>
       )}
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
+      <video ref={videoRef} autoPlay playsInline muted
         className="w-full h-full object-cover"
         style={{ transform: "scaleX(-1)", display: status === "active" ? "block" : "none" }}
       />
@@ -67,6 +56,67 @@ function CameraWidget() {
   );
 }
 
+// ── Session countdown banner ───────────────────────────────────────────────────
+function SessionBanner({ expiresAt, onExpired }) {
+  const [remaining, setRemaining] = useState(null);
+
+  useEffect(() => {
+    const tick = () => {
+      const diff = new Date(expiresAt).getTime() - Date.now();
+      if (diff <= 0) { setRemaining(0); onExpired?.(); return; }
+      setRemaining(diff);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [expiresAt, onExpired]);
+
+  if (remaining === null) return null;
+
+  const totalMs = remaining;
+  const h = Math.floor(totalMs / 3_600_000);
+  const m = Math.floor((totalMs % 3_600_000) / 60_000);
+  const s = Math.floor((totalMs % 60_000) / 1_000);
+  const display = h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
+  const isUrgent = remaining < 5 * 60 * 1000; // < 5 min
+
+  return (
+    <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-2.5 rounded-2xl shadow-xl border backdrop-blur-md ${
+      isUrgent
+        ? "bg-red-600/95 border-red-500 text-white"
+        : "bg-slate-900/90 border-white/10 text-white"
+    }`}>
+      <span className={`w-2 h-2 rounded-full ${isUrgent ? "bg-white animate-pulse" : "bg-emerald-400 animate-pulse"}`} />
+      <span className="text-xs font-semibold tracking-wide">Session closes in</span>
+      <span className={`text-sm font-black tabular-nums ${isUrgent ? "animate-pulse" : ""}`}>{display}</span>
+    </div>
+  );
+}
+
+// ── Session expired screen ─────────────────────────────────────────────────────
+function SessionExpiredScreen() {
+  const router = useRouter();
+  return (
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center px-6">
+      <div className="text-center max-w-sm">
+        <div className="w-20 h-20 rounded-3xl bg-red-500/20 flex items-center justify-center mx-auto mb-6">
+          <span className="text-4xl">⏰</span>
+        </div>
+        <h1 className="text-3xl font-black text-white mb-3">Session Expired</h1>
+        <p className="text-slate-400 text-sm mb-8 leading-relaxed">
+          This assessment session has ended. Please contact your educator if you believe this is a mistake.
+        </p>
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-2xl transition-colors"
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function QuizPage() {
   const { id } = useParams();
@@ -74,12 +124,12 @@ export default function QuizPage() {
   const [messageApi, contextHolder] = message.useMessage();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState([]);
-  // selectedOptions[qId] = number (single) | number[] (multi)
   const [selectedOptions, setSelectedOptions] = useState({});
   const [timeLeft, setTimeLeft] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [sessionExpiredMidQuiz, setSessionExpiredMidQuiz] = useState(false);
 
-  const { data: quizData, isLoading } = useQuery({
+  const { data: quizPayload, isLoading } = useQuery({
     queryKey: ["questions", { id }],
     queryFn: getQuestions,
   });
@@ -89,10 +139,13 @@ export default function QuizPage() {
     queryFn: getSettings,
   });
 
-  // Derive timer max once settings load, default 10
+  const quizData = quizPayload?.questions ?? [];
+  const quizMeta = quizPayload?.quiz ?? null;
+  const isSession = quizMeta?.isSession ?? false;
+  const sessionExpiredInitially = quizMeta?.sessionExpired ?? false;
+
   const TIMER_MAX = settingsData?.quizTimerSeconds ?? 10;
 
-  // Initialise timeLeft once TIMER_MAX is known
   useEffect(() => {
     if (settingsData) setTimeLeft(settingsData.quizTimerSeconds ?? 10);
   }, [settingsData]);
@@ -125,7 +178,14 @@ export default function QuizPage() {
             document.exitFullscreen().catch(() => {});
           messageApi.open({ type: "success", content: data.message, onClose: () => router.push("/profile") });
         },
-        onError: (err) => messageApi.error(err.response?.data?.error || "Submission failed"),
+        onError: (err) => {
+          const msg = err.response?.data?.message || err.response?.data?.error || "Submission failed";
+          if (err.response?.status === 403) {
+            messageApi.error("Session expired — your answers could not be submitted.");
+          } else {
+            messageApi.error(msg);
+          }
+        },
       }
     );
   }, [quizData, buildFinalAnswers, id, mutate, messageApi, router]);
@@ -155,11 +215,8 @@ export default function QuizPage() {
   // Fullscreen
   useEffect(() => {
     if (!isLoading && quizData?.length) {
-      const enter = () => {
-        const el = document.documentElement;
-        (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen)?.call(el)?.catch?.(() => {});
-      };
-      enter();
+      const el = document.documentElement;
+      (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen)?.call(el)?.catch?.(() => {});
       const onChange = () => setIsFullscreen(!!document.fullscreenElement);
       document.addEventListener("fullscreenchange", onChange);
       document.addEventListener("webkitfullscreenchange", onChange);
@@ -177,7 +234,7 @@ export default function QuizPage() {
     return () => window.removeEventListener("beforeunload", handler);
   }, []);
 
-  // Timer countdown
+  // Per-question timer
   useEffect(() => {
     if (!quizData?.length || timeLeft === null) return;
     if (timeLeft <= 0) {
@@ -200,7 +257,6 @@ export default function QuizPage() {
     return () => clearInterval(timer);
   }, [timeLeft, currentIndex, quizData, handleSubmit, TIMER_MAX]);
 
-  // Single-select click
   const handleSingleClick = (qId, optIdx) => {
     setSelectedOptions((prev) => ({ ...prev, [qId]: optIdx }));
     setAnswers((prev) => {
@@ -211,7 +267,6 @@ export default function QuizPage() {
     });
   };
 
-  // Multi-select toggle
   const handleMultiToggle = (qId, optIdx) => {
     setSelectedOptions((prev) => {
       const cur = Array.isArray(prev[qId]) ? prev[qId] : [];
@@ -229,6 +284,10 @@ export default function QuizPage() {
   };
 
   if (isLoading || timeLeft === null) return <Loader />;
+
+  // Session expired before student even started
+  if (sessionExpiredInitially || sessionExpiredMidQuiz) return <SessionExpiredScreen />;
+
   if (!quizData?.length) return <p className="text-center py-20 text-slate-500">No quiz data available.</p>;
 
   const currentQ = quizData[currentIndex];
@@ -241,6 +300,14 @@ export default function QuizPage() {
   return (
     <div className="min-h-screen bg-mesh flex flex-col items-center justify-center px-4 py-10 select-none">
       {contextHolder}
+
+      {/* Session countdown banner */}
+      {isSession && quizMeta?.expiresAt && (
+        <SessionBanner
+          expiresAt={quizMeta.expiresAt}
+          onExpired={() => setSessionExpiredMidQuiz(true)}
+        />
+      )}
 
       {!isFullscreen && (
         <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-6 text-center">
@@ -262,7 +329,8 @@ export default function QuizPage() {
       <div className="w-full max-w-2xl fade-up">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2 text-sm text-slate-500 font-bold uppercase tracking-widest">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" /> Live Assessment
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            {isSession ? "Session Assessment" : "Live Assessment"}
           </div>
           <div className="text-sm text-slate-500 font-extrabold bg-white px-3 py-1 rounded-full shadow-sm border border-slate-100">
             {currentIndex + 1} <span className="text-slate-300">/</span> {quizData.length}
@@ -295,7 +363,7 @@ export default function QuizPage() {
               )}
             </div>
 
-            {/* Circular timer */}
+            {/* Circular per-question timer */}
             <div className="relative shrink-0 w-20 h-20">
               <svg width="80" height="80" className="-rotate-90">
                 <circle cx="40" cy="40" r={35} fill="none" stroke="#f1f5f9" strokeWidth="6" />
@@ -317,16 +385,11 @@ export default function QuizPage() {
           {/* Options */}
           <div className="grid grid-cols-1 gap-4 mb-10">
             {options.filter(Boolean).map((opt, i) => {
-              const isSelected = isMultiSelect
-                ? multiSelected.includes(i)
-                : selectedOptions[_id] === i;
-
+              const isSelected = isMultiSelect ? multiSelected.includes(i) : selectedOptions[_id] === i;
               return (
                 <button
                   key={i}
-                  onClick={() =>
-                    isMultiSelect ? handleMultiToggle(_id, i) : handleSingleClick(_id, i)
-                  }
+                  onClick={() => isMultiSelect ? handleMultiToggle(_id, i) : handleSingleClick(_id, i)}
                   className={`w-full text-left flex items-center gap-5 px-6 py-4 rounded-2xl border-2 text-base font-bold transition-all duration-300 ${
                     isSelected
                       ? "border-violet-600 bg-violet-50 text-violet-900 shadow-lg shadow-violet-100 ring-2 ring-violet-600/10"
@@ -335,9 +398,7 @@ export default function QuizPage() {
                 >
                   {isMultiSelect ? (
                     <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black shrink-0 transition-all border-2 ${
-                      isSelected
-                        ? "bg-violet-700 text-white border-violet-700 scale-110"
-                        : "bg-white text-slate-400 border-slate-200"
+                      isSelected ? "bg-violet-700 text-white border-violet-700 scale-110" : "bg-white text-slate-400 border-slate-200"
                     }`}>
                       {isSelected ? "✓" : LABELS[i]}
                     </span>
@@ -354,7 +415,6 @@ export default function QuizPage() {
             })}
           </div>
 
-          {/* Multi-select selection count indicator */}
           {isMultiSelect && multiSelected.length > 0 && (
             <p className="text-xs text-violet-600 font-semibold text-center mb-4">
               {multiSelected.length} option{multiSelected.length > 1 ? "s" : ""} selected

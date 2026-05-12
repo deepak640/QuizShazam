@@ -166,9 +166,7 @@ const createSession = async (req, res) => {
     console.log(session, "session")
     const quizzes = await Promise.all(
       quiz.map(async ({ title, description, questions, authorId }) => {
-        const subjectName = title;
-        const existingCount = await Quiz.countDocuments({ subject: subjectName, isDeleted: { $ne: true } });
-        const quiz = new Quiz({ title: `Test ${existingCount + 1}`, subject: subjectName, description, author: authorId });
+        const quiz = new Quiz({ title, description, author: authorId });
         await quiz.save();
 
         await Promise.all(
@@ -203,29 +201,100 @@ const createSession = async (req, res) => {
 }
 
 const getAllsession = async (req, res) => {
-  let pipeline = []
-  let matchObj = {}
-  matchObj.expiresAt = { $exists: true }
-  matchObj.isDeleted = { $ne: true }
+  try {
+    const sessions = await Quiz.aggregate([
+      { $match: { expiresAt: { $exists: true }, isDeleted: { $ne: true } } },
+      {
+        $lookup: {
+          from: "responses",
+          localField: "_id",
+          foreignField: "quiz",
+          as: "responses",
+        },
+      },
+      {
+        $project: {
+          title: 1,
+          description: 1,
+          createdAt: 1,
+          expiresAt: 1,
+          questionCount: { $size: "$questions" },
+          submissionCount: { $size: "$responses" },
+        },
+      },
+      { $sort: { createdAt: -1 } },
+    ]);
+    res.json(sessions);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching sessions", error: error.message });
+  }
+};
 
-  pipeline.push(
-    {
-      $match: matchObj,
-    },
-    {
-      $project: {
-        title: 1,
-        description: 1,
-        createdAt: 1,
-        _id: 1,
-        expiresAt: 1,
-      }
+const getSessionById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [session] = await Quiz.aggregate([
+      { $match: { _id: new mongoose.Types.ObjectId(id), expiresAt: { $exists: true } } },
+      {
+        $lookup: { from: "responses", localField: "_id", foreignField: "quiz", as: "responses" },
+      },
+      {
+        $project: {
+          title: 1, description: 1, createdAt: 1, expiresAt: 1,
+          questionCount: { $size: "$questions" },
+          submissionCount: { $size: "$responses" },
+        },
+      },
+    ]);
+    if (!session) return res.status(404).json({ message: "Session not found" });
+    res.json(session);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching session", error: error.message });
+  }
+};
+
+const getSessionResults = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const results = await Response.find({ quiz: id })
+      .populate("user", "username email photoURL")
+      .populate("quiz", "title questions")
+      .lean();
+
+    const formatted = results.map((r) => ({
+      _id: r._id,
+      user: r.user,
+      score: r.score,
+      totalQuestions: r.quiz?.questions?.length || 0,
+      accuracy: r.quiz?.questions?.length ? Math.round((r.score / r.quiz.questions.length) * 100) : 0,
+      submittedAt: r.createdAt,
+    }));
+
+    res.json({ results: formatted });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching session results", error: error.message });
+  }
+};
+
+const extendSession = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { minutes } = req.body;
+    const mins = parseInt(minutes);
+    if (isNaN(mins) || mins < 1 || mins > 480) {
+      return res.status(400).json({ message: "Minutes must be between 1 and 480" });
     }
-  )
-
-  const Quizez = await Quiz.aggregate(pipeline);
-  res.json(Quizez)
-}
+    const quiz = await Quiz.findOne({ _id: id, expiresAt: { $exists: true } });
+    if (!quiz) return res.status(404).json({ message: "Session not found" });
+    // Extend from now if already expired, or from current expiresAt
+    const base = quiz.expiresAt < new Date() ? new Date() : quiz.expiresAt;
+    quiz.expiresAt = new Date(base.getTime() + mins * 60 * 1000);
+    await quiz.save();
+    res.json({ message: "Session extended", expiresAt: quiz.expiresAt });
+  } catch (error) {
+    res.status(500).json({ message: "Error extending session", error: error.message });
+  }
+};
 
 const getAllQuizzes = async (req, res) => {
   try {
@@ -264,7 +333,6 @@ const getAllQuizzes = async (req, res) => {
 }
 
 const shareQuiz = async (req, res) => {
-  if (req.user.role !== "admin") return res.status(401).send({ message: "Unauthorized access" });
   // console.log(req.body, "req.body")
   try {
     const { users, message, quizId } = req.body;
@@ -524,6 +592,9 @@ module.exports = {
   shareQuiz,
   getUserStats,
   getAllsession,
+  getSessionById,
+  getSessionResults,
+  extendSession,
   sendResetLink,
   resetPassword,
   updateQuestion,

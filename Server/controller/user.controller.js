@@ -137,11 +137,21 @@ const userQuestion = async (req, res) => {
   res.set("Cache-Control", "no-store");
   try {
     const quiz = await Quiz.findById(id).populate("questions");
-    if (!quiz) {
-      return res.status(404).send({ message: "Quiz not found" });
-    }
+    if (!quiz) return res.status(404).send({ message: "Quiz not found" });
 
-    res.status(200).send(quiz.questions);
+    const isSession = !!quiz.expiresAt;
+    const sessionExpired = isSession && quiz.expiresAt < new Date();
+
+    res.status(200).send({
+      questions: quiz.questions,
+      quiz: {
+        _id: quiz._id,
+        title: quiz.title,
+        isSession,
+        expiresAt: quiz.expiresAt || null,
+        sessionExpired,
+      },
+    });
   } catch (error) {
     res.status(500).send({ message: "Error retrieving questions", error });
   }
@@ -153,6 +163,9 @@ const quizSubmission = async (req, res) => {
   try {
     const quiz = await Quiz.findById(quizId).populate("questions");
     if (!quiz) return res.status(404).send({ message: "Quiz not found" });
+    if (quiz.expiresAt && quiz.expiresAt < new Date()) {
+      return res.status(403).send({ message: "Session has expired. Submission not accepted." });
+    }
 
     let score = 0;
 

@@ -4,7 +4,7 @@ var Quiz = require("../model/quiz");
 var Question = require("../model/question");
 var userModel = require("../model/user");
 var Authentication = require("../middleware/auth");
-const { getAllusers, getById, sendResetLink, resetPassword, getUserStats, createSession, getAllsession, getAllQuizzes, shareQuiz, updateQuestion, getFailedQuestions, getWeakTopics, getUserPerformanceSummary, getSettings, updateSettings } = require("../controller/index.controller");
+const { getAllusers, getById, sendResetLink, resetPassword, getUserStats, createSession, getAllsession, getSessionById, getSessionResults, extendSession, getAllQuizzes, shareQuiz, updateQuestion, getFailedQuestions, getWeakTopics, getUserPerformanceSummary, getSettings, updateSettings } = require("../controller/index.controller");
 
 /* GET home page. */
 router.get("/", function (req, res, next) {
@@ -98,6 +98,9 @@ router.post("/share-quiz",Authentication,shareQuiz)
 router.post("/create-assessment", createSession)
 
 router.get("/getAllsession", getAllsession)
+router.get("/session/:id", getSessionById)
+router.get("/session/:id/results", Authentication, getSessionResults)
+router.patch("/session/:id/extend", Authentication, extendSession)
 
 router.put("/question/:id", Authentication, updateQuestion)
 router.get("/analytics/failed-questions", Authentication, getFailedQuestions)

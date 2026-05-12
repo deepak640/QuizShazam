@@ -18,7 +18,10 @@ export const getAllQuizzesPublic = async () => {
 export const getQuestions = async ({ queryKey }) => {
   const [, { id }] = queryKey;
   const res = await axios.get(`${API_URL}/users/quiz/${id}/questions`);
-  return res.data;
+  // Backend now returns { questions, quiz } — normalise for consumers
+  if (res.data && res.data.questions) return res.data;
+  // Legacy fallback: array of questions
+  return { questions: res.data, quiz: null };
 };
 
 export const getResult = async ({ queryKey }) => {
