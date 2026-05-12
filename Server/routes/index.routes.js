@@ -4,7 +4,7 @@ var Quiz = require("../model/quiz");
 var Question = require("../model/question");
 var userModel = require("../model/user");
 var Authentication = require("../middleware/auth");
-const { getAllusers, getById, sendResetLink, resetPassword, getUserStats, createSession, getAllsession, getSessionById, getSessionResults, extendSession, getAllQuizzes, shareQuiz, updateQuestion, getFailedQuestions, getWeakTopics, getUserPerformanceSummary, getSettings, updateSettings } = require("../controller/index.controller");
+const { getAllusers, getById, sendResetLink, resetPassword, getUserStats, createSession, getAllsession, getSessionById, getSessionResults, extendSession, getAllQuizzes, shareQuiz, updateQuestion, getFailedQuestions, getWeakTopics, getUserPerformanceSummary, getSettings, updateSettings, getSessionAnalytics, getGlobalLeaderboard, getWeeklyLeaderboard, getQuizLeaderboard, getSubjectLeaderboard, getLeaderboardSubjects } = require("../controller/index.controller");
 
 /* GET home page. */
 router.get("/", function (req, res, next) {
@@ -35,7 +35,9 @@ router.post("/create-quiz", Authentication, async (req, res) => {
                 referenceLink: q.referenceLink || null,
                 topic: q.topic || null,
                 difficulty: ["easy", "medium", "hard"].includes(q.difficulty) ? q.difficulty : "easy",
-                isMultiSelect: !!q.isMultiSelect,
+                isMultiSelect: q.questionType === "multi" || !!q.isMultiSelect,
+                questionType: ["mcq", "multi", "true_false"].includes(q.questionType) ? q.questionType : (q.isMultiSelect ? "multi" : "mcq"),
+                timerSeconds: q.timerSeconds != null ? parseInt(q.timerSeconds) || null : null,
               });
               await question.save();
               quiz.questions.push(question);
@@ -103,6 +105,7 @@ router.get("/session/:id/results", Authentication, getSessionResults)
 router.patch("/session/:id/extend", Authentication, extendSession)
 
 router.put("/question/:id", Authentication, updateQuestion)
+router.get("/analytics/sessions", Authentication, getSessionAnalytics)
 router.get("/analytics/failed-questions", Authentication, getFailedQuestions)
 router.get("/analytics/weak-topics", Authentication, getWeakTopics)
 router.get("/analytics/user-performance", Authentication, getUserPerformanceSummary)
@@ -110,6 +113,13 @@ router.get("/analytics/user-performance", Authentication, getUserPerformanceSumm
 // Settings
 router.get("/settings", getSettings)
 router.put("/settings", Authentication, updateSettings)
+
+// Leaderboards (public)
+router.get("/leaderboard/global", getGlobalLeaderboard)
+router.get("/leaderboard/weekly", getWeeklyLeaderboard)
+router.get("/leaderboard/quiz/:quizId", getQuizLeaderboard)
+router.get("/leaderboard/subject/:subject", getSubjectLeaderboard)
+router.get("/leaderboard/subjects", getLeaderboardSubjects)
 
 
 router.delete("/quiz/:id", Authentication, async (req, res) => {

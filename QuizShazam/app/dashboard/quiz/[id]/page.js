@@ -144,11 +144,18 @@ export default function QuizPage() {
   const isSession = quizMeta?.isSession ?? false;
   const sessionExpiredInitially = quizMeta?.sessionExpired ?? false;
 
-  const TIMER_MAX = settingsData?.quizTimerSeconds ?? 10;
+  const GLOBAL_TIMER = settingsData?.quizTimerSeconds ?? 10;
+  // Per-question timer: use question's timerSeconds if set, else global
+  const getTimerForQuestion = useCallback((q) => {
+    return q?.timerSeconds ?? GLOBAL_TIMER;
+  }, [GLOBAL_TIMER]);
+  const TIMER_MAX = quizData?.length ? getTimerForQuestion(quizData[currentIndex]) : GLOBAL_TIMER;
 
   useEffect(() => {
-    if (settingsData) setTimeLeft(settingsData.quizTimerSeconds ?? 10);
-  }, [settingsData]);
+    if (settingsData && quizData?.length) {
+      setTimeLeft(getTimerForQuestion(quizData[0]));
+    }
+  }, [settingsData, quizData]);
 
   const { mutate, data: submitData, isPending } = useMutation({
     mutationFn: ({ values, token }) => submitQuiz({ values, token }),
@@ -205,12 +212,13 @@ export default function QuizPage() {
       return;
     }
     if (currentIndex < quizData.length - 1) {
+      const nextQ = quizData[currentIndex + 1];
       setCurrentIndex((i) => i + 1);
-      setTimeLeft(TIMER_MAX);
+      setTimeLeft(getTimerForQuestion(nextQ));
     } else {
       handleSubmit();
     }
-  }, [quizData, currentIndex, isCurrentAnswered, messageApi, handleSubmit, TIMER_MAX]);
+  }, [quizData, currentIndex, isCurrentAnswered, messageApi, handleSubmit, getTimerForQuestion]);
 
   // Fullscreen
   useEffect(() => {

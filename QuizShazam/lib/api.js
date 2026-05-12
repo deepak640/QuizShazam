@@ -119,3 +119,35 @@ export const getSettings = async () => {
   const res = await axios.get(`${API_URL}/settings`);
   return res.data;
 };
+
+export const getGlobalLeaderboard = async () => {
+  const res = await axios.get(`${API_URL}/leaderboard/global`);
+  return res.data;
+};
+
+export const getWeeklyLeaderboard = async () => {
+  const res = await axios.get(`${API_URL}/leaderboard/weekly`);
+  return res.data;
+};
+
+export const getQuizLeaderboard = async ({ queryKey }) => {
+  const [, { quizId }] = queryKey;
+  const res = await axios.get(`${API_URL}/leaderboard/quiz/${quizId}`);
+  return res.data;
+};
+
+export const getSubjectLeaderboard = async ({ queryKey }) => {
+  const [, { subject }] = queryKey;
+  const res = await axios.get(`${API_URL}/leaderboard/subject/${encodeURIComponent(subject)}`);
+  return res.data;
+};
+
+export const getLeaderboardSubjects = async () => {
+  const res = await axios.get(`${API_URL}/leaderboard/subjects`);
+  return res.data;
+};
+
+export const getLeaderboardQuizzes = async () => {
+  const res = await axios.get(`${API_URL}/getAllQuizzes`);
+  return res.data;
+};

@@ -5,21 +5,24 @@ import Link from "next/link";
 import Cookies from "js-cookie";
 import { Modal } from "antd";
 import Chatbot from "./Chatbot";
-import { IoFlashOutline, IoPersonOutline, IoChatbubbleEllipsesOutline, IoLogOutOutline, IoMenuOutline, IoCloseOutline, IoSettingsOutline, IoBookOutline } from "react-icons/io5";
+import { IoFlashOutline, IoPersonOutline, IoChatbubbleEllipsesOutline, IoLogOutOutline, IoMenuOutline, IoCloseOutline, IoSettingsOutline, IoBookOutline, IoTrophyOutline } from "react-icons/io5";
 
 export default function Header() {
-  const [user, setUser] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const data = Cookies.get("user");
-      return data ? JSON.parse(data) : null;
-    }
-    return null;
-  });
+  const [user, setUser] = useState(null);
   const [navActive, setNavActive] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef(null);
   const router = useRouter();
+
+  useEffect(() => {
+    try {
+      const data = Cookies.get("user");
+      if (data) setUser(JSON.parse(data));
+    } catch {
+      // invalid cookie — leave user as null
+    }
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -66,7 +69,7 @@ export default function Header() {
 
       {/* Mobile Overlay/Backdrop */}
       {navActive && (
-        <div 
+        <div
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] md:hidden"
           onClick={() => setNavActive(false)}
         />
@@ -96,12 +99,13 @@ export default function Header() {
         </button>
 
         {/* Desktop Links */}
-        {!user && (
-          <div className="hidden md:flex items-center gap-8">
-            <Link href="/" className="text-sm font-medium text-slate-600 hover:text-violet-700 transition">Home</Link>
-            <Link href="/dashboard" className="text-sm font-medium text-slate-600 hover:text-violet-700 transition">Quizzes</Link>
-          </div>
-        )}
+        {/* <div className="hidden md:flex items-center gap-8">
+          {!user && <Link href="/" className="text-sm font-medium text-slate-600 hover:text-violet-700 transition">Home</Link>}
+          {!user && <Link href="/dashboard" className="text-sm font-medium text-slate-600 hover:text-violet-700 transition">Quizzes</Link>}
+          <Link href="/leaderboard" className="text-sm font-medium text-slate-600 hover:text-violet-700 transition flex items-center gap-1.5">
+            <IoTrophyOutline size={15} /> Leaderboard
+          </Link>
+        </div> */}
 
         {/* Right side actions */}
         <div className="flex items-center gap-3 relative z-[110]">
@@ -112,7 +116,7 @@ export default function Header() {
                 onClick={() => setNavActive((v) => !v)}
               >
                 <img
-                  src={user.photoURL}
+                  src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username || "U")}&background=7c3aed&color=fff`}
                   alt="profile"
                   className="w-9 h-9 rounded-xl object-cover border-2 border-violet-200 group-hover:border-violet-400 transition"
                 />
@@ -144,10 +148,17 @@ export default function Header() {
                   </Link>
                   <Link
                     href="/dashboard"
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-violet-50 hover:text-violet-700 transition md:block hidden"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-violet-50 hover:text-violet-700 transition"
                     onClick={() => setNavActive(false)}
                   >
                     <IoBookOutline size={17} className="text-slate-400" /> Browse Quizzes
+                  </Link>
+                  <Link
+                    href="/leaderboard"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-violet-50 hover:text-violet-700 transition"
+                    onClick={() => setNavActive(false)}
+                  >
+                    <IoTrophyOutline size={17} className="text-slate-400" /> Leaderboard
                   </Link>
                   <button
                     className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-slate-700 hover:bg-violet-50 hover:text-violet-700 transition"
@@ -198,7 +209,7 @@ export default function Header() {
         </div>
 
         {/* Mobile slide-down menu */}
-        <div 
+        <div
           className={`absolute top-0 left-0 right-0 bg-white border-b border-slate-100 shadow-2xl md:hidden z-[90] transition-all duration-300 ease-in-out transform ${
             navActive ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
           }`}
@@ -207,13 +218,13 @@ export default function Header() {
             {user ? (
               <>
                 <div className="flex items-center gap-4 p-4 mb-4 bg-slate-50 rounded-2xl">
-                  <img src={user.photoURL} alt="avatar" className="w-12 h-12 rounded-xl object-cover border-2 border-white shadow-sm" />
+                  <img src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username || "U")}&background=7c3aed&color=fff`} alt="avatar" className="w-12 h-12 rounded-xl object-cover border-2 border-white shadow-sm" />
                   <div>
                     <p className="font-bold text-slate-900">{user.username}</p>
                     <p className="text-xs text-slate-500">{user.email}</p>
                   </div>
                 </div>
-                
+
                 <p className="px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Navigation</p>
                 <Link
                   href="/profile"
@@ -245,9 +256,16 @@ export default function Header() {
                 >
                   <IoFlashOutline size={20} className="text-violet-600" /> Browse Quizzes
                 </Link>
-                
+                <Link
+                  href="/leaderboard"
+                  className="flex items-center gap-4 px-4 py-3.5 text-base font-semibold text-slate-700 hover:bg-violet-50 rounded-xl transition"
+                  onClick={() => setNavActive(false)}
+                >
+                  <IoTrophyOutline size={20} className="text-violet-600" /> Leaderboard
+                </Link>
+
                 <div className="my-4 border-t border-slate-100" />
-                
+
                 <button
                   className="flex items-center gap-4 w-full px-4 py-3.5 text-base font-bold text-red-500 hover:bg-red-50 rounded-xl transition text-left"
                   onClick={handleLogout}

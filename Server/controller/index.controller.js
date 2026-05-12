@@ -98,27 +98,31 @@ const resetPassword = async (req, res) => {
 const getUserStats = async (req, res) => {
   try {
     // if (req.user.role !== "admin") return res.status(401).send({ message: "Unauthorized access" });
-    let pipeline = []
-    pipeline.push(
-      { $unwind: "$quizzesTaken" }, // Flatten the quizzesTaken array
-      { $group: { _id: null, totalQuizzes: { $sum: 1 } } } // Count total quizzes
-    );
-    const result = await User.aggregate(pipeline);
+    
+    // Total normal quizzes count
+    const result = await User.aggregate([
+      { $unwind: "$quizzesTaken" },
+      {
+        $lookup: {
+          from: "quizzes",
+          localField: "quizzesTaken",
+          foreignField: "_id",
+          as: "quizInfo"
+        }
+      },
+      { $unwind: "$quizInfo" },
+      { $match: { "quizInfo.expiresAt": { $exists: false } } },
+      { $group: { _id: null, totalQuizzes: { $sum: 1 } } }
+    ]);
 
     const chart = await User.aggregate([
       {
         $unwind: "$quizzesTaken", // Flatten quizzesTaken array
       },
       {
-        $group: {
-          _id: "$quizzesTaken", // Group by quiz ID
-          count: { $sum: 1 }, // Count occurrences of each quiz
-        },
-      },
-      {
         $lookup: {
           from: "quizzes", // Join with Quiz collection
-          localField: "_id",
+          localField: "quizzesTaken",
           foreignField: "_id",
           as: "quizDetails",
         },
@@ -127,10 +131,22 @@ const getUserStats = async (req, res) => {
         $unwind: "$quizDetails", // Unwind the quiz details
       },
       {
+        $match: {
+          "quizDetails.expiresAt": { $exists: false } // Exclude assessments
+        }
+      },
+      {
+        $group: {
+          _id: "$quizzesTaken", // Group by quiz ID
+          count: { $sum: 1 }, // Count occurrences of each quiz
+          title: { $first: "$quizDetails.title" }
+        },
+      },
+      {
         $project: {
           _id: 0,
-          title: "$quizDetails.title", // Extract quiz title
-          count: 1, // Keep count
+          title: 1, 
+          count: 1,
         },
       },
       {
@@ -152,8 +168,7 @@ const getUserStats = async (req, res) => {
       ],
     };
 
-
-    return res.status(200).send({ total: result[0].totalQuizzes, byCategory: chartData });
+    return res.status(200).send({ total: result[0]?.totalQuizzes || 0, byCategory: chartData });
   } catch (error) {
     console.log("🚀 ~ router.get ~ error:", error);
     res.status(500).send({ message: "Error retrieving users", error });
@@ -183,7 +198,9 @@ const createSession = async (req, res) => {
                 referenceLink: q.referenceLink || null,
                 topic: q.topic || null,
                 difficulty: ["easy", "medium", "hard"].includes(q.difficulty) ? q.difficulty : "easy",
-                isMultiSelect: !!q.isMultiSelect,
+                isMultiSelect: q.questionType === "multi" || !!q.isMultiSelect,
+                questionType: ["mcq", "multi", "true_false"].includes(q.questionType) ? q.questionType : (q.isMultiSelect ? "multi" : "mcq"),
+                timerSeconds: q.timerSeconds != null ? parseInt(q.timerSeconds) || null : null,
               });
               await question.save();
               quiz.questions.push(question);
@@ -318,12 +335,35 @@ const getAllQuizzes = async (req, res) => {
       }
     ]);
 
-    // Get quizzesTaken for the user
+    // Get only normal quizzesTaken for the user
     const quizzesTakenResult = await userModel.aggregate([
       { $match: { _id: new mongoose.Types.ObjectId(id) } },
-      { $project: { quizzesTaken: 1 } }
+      {
+        $lookup: {
+          from: "quizzes",
+          localField: "quizzesTaken",
+          foreignField: "_id",
+          as: "takenDetails"
+        }
+      },
+      {
+        $project: {
+          quizzesTaken: {
+            $filter: {
+              input: "$takenDetails",
+              as: "q",
+              cond: { $not: ["$$q.expiresAt"] }
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          quizzesTaken: "$quizzesTaken._id"
+        }
+      }
     ]);
-    const quizzesTaken = quizzesTakenResult[0] || [];
+    const quizzesTaken = quizzesTakenResult[0] || { quizzesTaken: [] };
 
     res.status(200).send({ quizzes: quizzes, quizzesTaken });
   } catch (error) {
@@ -372,6 +412,16 @@ const getFailedQuestions = async (req, res) => {
     const threshold = parseInt(req.query.threshold) || 70;
 
     const results = await Response.aggregate([
+      {
+        $lookup: {
+          from: "quizzes",
+          localField: "quiz",
+          foreignField: "_id",
+          as: "quizDetails",
+        },
+      },
+      { $unwind: "$quizDetails" },
+      { $match: { "quizDetails.expiresAt": { $exists: false } } },
       { $unwind: "$answers" },
       {
         $lookup: {
@@ -432,6 +482,16 @@ const getWeakTopics = async (req, res) => {
 
     const results = await Response.aggregate([
       { $match: matchStage },
+      {
+        $lookup: {
+          from: "quizzes",
+          localField: "quiz",
+          foreignField: "_id",
+          as: "quizDetails",
+        },
+      },
+      { $unwind: "$quizDetails" },
+      { $match: { "quizDetails.expiresAt": { $exists: false } } },
       { $unwind: "$answers" },
       {
         $lookup: {
@@ -485,6 +545,16 @@ const getUserPerformanceSummary = async (req, res) => {
 
     const summary = await Response.aggregate([
       {
+        $lookup: {
+          from: "quizzes",
+          localField: "quiz",
+          foreignField: "_id",
+          as: "quizDetails",
+        },
+      },
+      { $unwind: "$quizDetails" },
+      { $match: { "quizDetails.expiresAt": { $exists: false } } },
+      {
         $group: {
           _id: "$user",
           attempts: { $sum: 1 },
@@ -517,6 +587,16 @@ const getUserPerformanceSummary = async (req, res) => {
 
     // Time-based activity
     const activity = await Response.aggregate([
+      {
+        $lookup: {
+          from: "quizzes",
+          localField: "quiz",
+          foreignField: "_id",
+          as: "quizDetails",
+        },
+      },
+      { $unwind: "$quizDetails" },
+      { $match: { "quizDetails.expiresAt": { $exists: false } } },
       {
         $facet: {
           today: [
@@ -555,6 +635,193 @@ const getUserPerformanceSummary = async (req, res) => {
     res.status(500).send({ message: "Error retrieving performance summary", error });
   }
 };
+
+const getSessionAnalytics = async (req, res) => {
+  try {
+    // All session quizzes
+    const sessionQuizIds = await Quiz.find({ expiresAt: { $exists: true }, isDeleted: { $ne: true } }, "_id questions expiresAt createdAt title").lean();
+    const sessionIds = sessionQuizIds.map((q) => q._id);
+
+    // Responses for session quizzes only
+    const sessionResponses = await Response.find({ quiz: { $in: sessionIds } }).lean();
+
+    const totalSessions = sessionQuizIds.length;
+    const totalSubmissions = sessionResponses.length;
+    const avgAccuracy = totalSubmissions > 0
+      ? Math.round(sessionResponses.reduce((sum, r) => {
+          const quiz = sessionQuizIds.find((q) => q._id.toString() === r.quiz.toString());
+          const total = quiz?.questions?.length || 1;
+          return sum + (r.score / total) * 100;
+        }, 0) / totalSubmissions)
+      : 0;
+    const activeSessions = sessionQuizIds.filter((q) => q.expiresAt > new Date()).length;
+
+    // Per-session breakdown
+    const sessionBreakdown = sessionQuizIds.map((quiz) => {
+      const responses = sessionResponses.filter((r) => r.quiz.toString() === quiz._id.toString());
+      const totalQ = quiz.questions?.length || 1;
+      const avgAcc = responses.length
+        ? Math.round(responses.reduce((s, r) => s + (r.score / totalQ) * 100, 0) / responses.length)
+        : 0;
+      const topScore = responses.length ? Math.max(...responses.map((r) => Math.round((r.score / totalQ) * 100))) : 0;
+      return {
+        _id: quiz._id,
+        title: quiz.title,
+        submissions: responses.length,
+        avgAccuracy: avgAcc,
+        topScore,
+        isExpired: quiz.expiresAt < new Date(),
+        createdAt: quiz.createdAt,
+        expiresAt: quiz.expiresAt,
+      };
+    }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    // Top students across all sessions (by total score across sessions)
+    const userScoreMap = {};
+    for (const r of sessionResponses) {
+      const uid = r.user.toString();
+      if (!userScoreMap[uid]) userScoreMap[uid] = { totalScore: 0, totalQ: 0, sessions: 0 };
+      const quiz = sessionQuizIds.find((q) => q._id.toString() === r.quiz.toString());
+      userScoreMap[uid].totalScore += r.score;
+      userScoreMap[uid].totalQ += quiz?.questions?.length || 1;
+      userScoreMap[uid].sessions += 1;
+    }
+    const userIds = Object.keys(userScoreMap);
+    const users = await require("../model/user").find({ _id: { $in: userIds } }, "username email photoURL").lean();
+    const topStudents = users.map((u) => {
+      const stats = userScoreMap[u._id.toString()];
+      return {
+        _id: u._id,
+        username: u.username,
+        email: u.email,
+        sessions: stats.sessions,
+        avgAccuracy: Math.round((stats.totalScore / stats.totalQ) * 100),
+      };
+    }).sort((a, b) => b.avgAccuracy - a.avgAccuracy).slice(0, 10);
+
+    // Submission trend last 14 days
+    const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+    const trendMap = {};
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      trendMap[d.toISOString().slice(0, 10)] = 0;
+    }
+    for (const r of sessionResponses) {
+      if (r.createdAt >= cutoff) {
+        const day = r.createdAt.toISOString().slice(0, 10);
+        if (trendMap[day] !== undefined) trendMap[day]++;
+      }
+    }
+    const trend = Object.entries(trendMap).map(([date, count]) => ({ date, count }));
+
+    res.json({ totalSessions, totalSubmissions, avgAccuracy, activeSessions, sessionBreakdown, topStudents, trend });
+  } catch (error) {
+    console.error("getSessionAnalytics error:", error);
+    res.status(500).json({ message: "Error fetching session analytics", error: error.message });
+  }
+};
+
+// ─── Leaderboard helpers ──────────────────────────────────────────────────────
+
+const userProjection = {
+  "user.username": 1,
+  "user.email": 1,
+  "user.photoURL": 1,
+};
+
+const getGlobalLeaderboard = async (req, res) => {
+  try {
+    const rows = await Response.aggregate([
+      { $match: { user: { $exists: true, $ne: null } } },
+      { $group: { _id: "$user", totalScore: { $sum: "$score" }, quizzesTaken: { $sum: 1 }, avgScore: { $avg: "$score" } } },
+      { $sort: { totalScore: -1 } },
+      { $limit: 100 },
+      { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "user" } },
+      { $unwind: { path: "$user", preserveNullAndEmptyArrays: false } },
+      { $project: { totalScore: 1, quizzesTaken: 1, avgScore: { $round: ["$avgScore", 1] }, ...userProjection } },
+    ]);
+    res.json(rows.map((r, i) => ({ rank: i + 1, ...r })));
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching global leaderboard", error: error.message });
+  }
+};
+
+const getWeeklyLeaderboard = async (req, res) => {
+  try {
+    const now = new Date();
+    const day = now.getDay();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const rows = await Response.aggregate([
+      { $match: { user: { $exists: true, $ne: null }, createdAt: { $gte: startOfWeek } } },
+      { $group: { _id: "$user", totalScore: { $sum: "$score" }, quizzesTaken: { $sum: 1 }, avgScore: { $avg: "$score" } } },
+      { $sort: { totalScore: -1 } },
+      { $limit: 100 },
+      { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "user" } },
+      { $unwind: { path: "$user", preserveNullAndEmptyArrays: false } },
+      { $project: { totalScore: 1, quizzesTaken: 1, avgScore: { $round: ["$avgScore", 1] }, ...userProjection } },
+    ]);
+    res.json(rows.map((r, i) => ({ rank: i + 1, ...r })));
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching weekly leaderboard", error: error.message });
+  }
+};
+
+const getQuizLeaderboard = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(quizId))
+      return res.status(400).json({ message: "Invalid quiz ID" });
+
+    const rows = await Response.aggregate([
+      { $match: { quiz: new mongoose.Types.ObjectId(quizId), user: { $exists: true, $ne: null } } },
+      { $sort: { score: -1, createdAt: 1 } },
+      { $group: { _id: "$user", bestScore: { $first: "$score" }, attempts: { $sum: 1 }, lastAttempt: { $max: "$createdAt" } } },
+      { $sort: { bestScore: -1 } },
+      { $limit: 100 },
+      { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "user" } },
+      { $unwind: { path: "$user", preserveNullAndEmptyArrays: false } },
+      { $project: { bestScore: 1, attempts: 1, lastAttempt: 1, ...userProjection } },
+    ]);
+    res.json(rows.map((r, i) => ({ rank: i + 1, ...r })));
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching quiz leaderboard", error: error.message });
+  }
+};
+
+const getSubjectLeaderboard = async (req, res) => {
+  try {
+    const subject = decodeURIComponent(req.params.subject);
+    const rows = await Response.aggregate([
+      { $match: { user: { $exists: true, $ne: null } } },
+      { $lookup: { from: "quizzes", localField: "quiz", foreignField: "_id", as: "quizData" } },
+      { $unwind: "$quizData" },
+      { $match: { "quizData.subject": subject, "quizData.isDeleted": { $ne: true } } },
+      { $group: { _id: "$user", totalScore: { $sum: "$score" }, quizzesTaken: { $sum: 1 }, avgScore: { $avg: "$score" } } },
+      { $sort: { totalScore: -1 } },
+      { $limit: 100 },
+      { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "user" } },
+      { $unwind: { path: "$user", preserveNullAndEmptyArrays: false } },
+      { $project: { totalScore: 1, quizzesTaken: 1, avgScore: { $round: ["$avgScore", 1] }, ...userProjection } },
+    ]);
+    res.json(rows.map((r, i) => ({ rank: i + 1, ...r })));
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching subject leaderboard", error: error.message });
+  }
+};
+
+const getLeaderboardSubjects = async (req, res) => {
+  try {
+    const subjects = await Quiz.distinct("subject", { isDeleted: { $ne: true }, subject: { $ne: null } });
+    res.json(subjects.sort());
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching subjects", error: error.message });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const getSettings = async (req, res) => {
   try {
@@ -603,4 +870,10 @@ module.exports = {
   getUserPerformanceSummary,
   getSettings,
   updateSettings,
+  getSessionAnalytics,
+  getGlobalLeaderboard,
+  getWeeklyLeaderboard,
+  getQuizLeaderboard,
+  getSubjectLeaderboard,
+  getLeaderboardSubjects,
 }

@@ -142,8 +142,21 @@ const userQuestion = async (req, res) => {
     const isSession = !!quiz.expiresAt;
     const sessionExpired = isSession && quiz.expiresAt < new Date();
 
+    // Shuffle questions for fairness
+    const questions = quiz.questions.map((q) => ({
+      _id: q._id,
+      questionText: q.questionText,
+      options: q.options,
+      isMultiSelect: q.isMultiSelect,
+      questionType: q.questionType || (q.isMultiSelect ? "multi" : "mcq"),
+      timerSeconds: q.timerSeconds ?? null,
+      explanation: q.explanation,
+      topic: q.topic,
+      difficulty: q.difficulty,
+    }));
+
     res.status(200).send({
-      questions: quiz.questions,
+      questions,
       quiz: {
         _id: quiz._id,
         title: quiz.title,
@@ -216,12 +229,22 @@ const userProfile = async (req, res) => {
   const userID = req.user.id;
 
   try {
-    const profile = await User.findById(userID);
+    const profile = await User.findById(userID).lean();
     const quizzes = [];
+    const normalQuizzesTakenIds = [];
+    
     for (const quizId of profile.quizzesTaken) {
       const info = await Quiz.findById(quizId);
-      if (info) quizzes.push(info);
+      // Only show normal quizzes (those without an expiry/session time)
+      if (info && !info.expiresAt) {
+        quizzes.push(info);
+        normalQuizzesTakenIds.push(quizId);
+      }
     }
+    
+    // Update the profile object in response to only count normal quizzes
+    profile.quizzesTaken = normalQuizzesTakenIds;
+    
     res.json({ profile, quizzes });
   } catch (error) {
     res.status(500).send({ message: "Comeback later", error });
@@ -257,6 +280,11 @@ const quizMatrix = async (req, res) => {
         $unwind: "$quizObj"
       },
       {
+        $match: {
+          "quizObj.expiresAt": { $exists: false } // Exclude assessments
+        }
+      },
+      {
         $addFields: {
           "title": "$quizObj.title"
         }
@@ -290,14 +318,18 @@ const aiChat = async (req, res) => {
     const msg = message.toLowerCase().trim();
 
     // ── Fetch live data ───────────────────────────────────────────────────
-    const [quizzes, userDoc, userResponses] = await Promise.all([
-      Quiz.find({}, "title description questions").lean(),
+    const [quizzes, userDoc, userResponsesRaw] = await Promise.all([
+      Quiz.find({ expiresAt: { $exists: false } }, "title description questions").lean(), // Only normal quizzes
       userId ? User.findById(userId).lean() : null,
-      userId ? Response.find({ user: userId }).populate("quiz", "title questions").lean() : [],
+      userId ? Response.find({ user: userId }).populate("quiz", "title questions expiresAt").lean() : [],
     ]);
 
+    // Filter out assessments from user history
+    const userResponses = userResponsesRaw.filter(r => r.quiz && !r.quiz.expiresAt);
+
     const userName  = userDoc?.username ?? "there";
-    const quizCount = userDoc?.quizzesTaken?.length ?? 0;
+    // Count only normal quizzes taken
+    const quizCount = userResponses.length;
 
     // ── Helpers ───────────────────────────────────────────────────────────
     const match = (...terms) => terms.some(t => msg.includes(t));
