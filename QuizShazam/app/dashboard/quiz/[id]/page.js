@@ -6,10 +6,19 @@ import Cookies from "js-cookie";
 import { message } from "antd";
 import dynamic from "next/dynamic";
 import Loader from "@/components/Loader";
-import { getQuestions, submitQuiz, getSettings } from "@/lib/api";
-import { IoVideocamOffOutline, IoVideocamOutline, IoShieldCheckmarkOutline } from "react-icons/io5";
+import {
+  getQuestions, submitQuiz, getSettings,
+  getOrCreateSession, saveSessionProgress, discardQuizSession,
+} from "@/lib/api";
+import {
+  IoVideocamOffOutline, IoVideocamOutline,
+  IoShieldCheckmarkOutline, IoCloudDoneOutline,
+  IoCloudUploadOutline, IoWarningOutline,
+} from "react-icons/io5";
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
+
+const LS_KEY = (id) => `quiz_draft_${id}`;
 
 // ── Camera widget ─────────────────────────────────────────────────────────────
 function CameraWidget() {
@@ -73,18 +82,15 @@ function SessionBanner({ expiresAt, onExpired }) {
 
   if (remaining === null) return null;
 
-  const totalMs = remaining;
-  const h = Math.floor(totalMs / 3_600_000);
-  const m = Math.floor((totalMs % 3_600_000) / 60_000);
-  const s = Math.floor((totalMs % 60_000) / 1_000);
+  const h = Math.floor(remaining / 3_600_000);
+  const m = Math.floor((remaining % 3_600_000) / 60_000);
+  const s = Math.floor((remaining % 60_000) / 1_000);
   const display = h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
-  const isUrgent = remaining < 5 * 60 * 1000; // < 5 min
+  const isUrgent = remaining < 5 * 60 * 1000;
 
   return (
     <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-2.5 rounded-2xl shadow-xl border backdrop-blur-md ${
-      isUrgent
-        ? "bg-red-600/95 border-red-500 text-white"
-        : "bg-slate-900/90 border-white/10 text-white"
+      isUrgent ? "bg-red-600/95 border-red-500 text-white" : "bg-slate-900/90 border-white/10 text-white"
     }`}>
       <span className={`w-2 h-2 rounded-full ${isUrgent ? "bg-white animate-pulse" : "bg-emerald-400 animate-pulse"}`} />
       <span className="text-xs font-semibold tracking-wide">Session closes in</span>
@@ -100,7 +106,7 @@ function SessionExpiredScreen() {
     <div className="min-h-screen bg-slate-900 flex items-center justify-center px-6">
       <div className="text-center max-w-sm">
         <div className="w-20 h-20 rounded-3xl bg-red-500/20 flex items-center justify-center mx-auto mb-6">
-          <span className="text-4xl">⏰</span>
+          <IoWarningOutline className="text-red-400" size={40} />
         </div>
         <h1 className="text-3xl font-black text-white mb-3">Session Expired</h1>
         <p className="text-slate-400 text-sm mb-8 leading-relaxed">
@@ -117,11 +123,95 @@ function SessionExpiredScreen() {
   );
 }
 
+// ── Autosave indicator ────────────────────────────────────────────────────────
+// status: "idle" | "saving" | "saved" | "offline"
+function AutosaveIndicator({ status, restoredSession }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (status === "saved") {
+      setVisible(true);
+      const t = setTimeout(() => setVisible(false), 2500);
+      return () => clearTimeout(t);
+    }
+    if (status === "saving" || status === "offline") setVisible(true);
+    else setVisible(false);
+  }, [status]);
+
+  if (!visible && !restoredSession) return null;
+
+  return (
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
+      {restoredSession && (
+        <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold shadow-lg shadow-indigo-200 animate-in fade-in slide-in-from-bottom-2">
+          <IoCloudDoneOutline size={14} />
+          Previous session restored
+        </div>
+      )}
+      {visible && (
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-md transition-all ${
+          status === "saving"  ? "bg-slate-800 text-white" :
+          status === "saved"   ? "bg-emerald-600 text-white" :
+          status === "offline" ? "bg-amber-500 text-white" : ""
+        }`}>
+          {status === "saving"  && <><IoCloudUploadOutline size={13} className="animate-pulse" /> Saving…</>}
+          {status === "saved"   && <><IoCloudDoneOutline size={13} /> Saved</>}
+          {status === "offline" && <><IoWarningOutline size={13} /> Offline — progress cached locally</>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Resume modal ──────────────────────────────────────────────────────────────
+function ResumeModal({ answeredCount, onResume, onDiscard }) {
+  return (
+    <div className="fixed inset-0 z-[200] bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-6">
+      <div className="bg-white rounded-3xl p-8 shadow-2xl max-w-sm w-full text-center">
+        <div className="w-16 h-16 rounded-2xl bg-violet-100 flex items-center justify-center mx-auto mb-5">
+          <IoCloudDoneOutline className="text-violet-600" size={32} />
+        </div>
+        <h2 className="text-2xl font-black text-slate-900 mb-2">Unfinished Quiz</h2>
+        <p className="text-slate-500 text-sm mb-1">
+          You have an unfinished attempt with{" "}
+          <span className="font-bold text-violet-700">{answeredCount} answer{answeredCount !== 1 ? "s" : ""}</span> saved.
+        </p>
+        <p className="text-slate-400 text-xs mb-7">Would you like to continue where you left off?</p>
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={onResume}
+            className="w-full py-3.5 bg-gradient-to-r from-violet-700 to-indigo-500 text-white font-black rounded-2xl shadow-xl shadow-violet-200 hover:opacity-90 transition"
+          >
+            Resume Quiz
+          </button>
+          <button
+            onClick={onDiscard}
+            className="w-full py-3 border border-slate-200 text-slate-600 font-semibold rounded-2xl hover:bg-slate-50 transition text-sm"
+          >
+            Start Fresh
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── useDebounce ───────────────────────────────────────────────────────────────
+function useDebounce(fn, delay) {
+  const timerRef = useRef(null);
+  return useCallback((...args) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => fn(...args), delay);
+  }, [fn, delay]);
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function QuizPage() {
   const { id } = useParams();
   const router = useRouter();
   const [messageApi, contextHolder] = message.useMessage();
+
+  // ── quiz state
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState([]);
   const [selectedOptions, setSelectedOptions] = useState({});
@@ -129,6 +219,35 @@ export default function QuizPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [sessionExpiredMidQuiz, setSessionExpiredMidQuiz] = useState(false);
 
+  // ── session persistence state
+  const [sessionPhase, setSessionPhase] = useState("loading"); // "loading" | "prompt" | "active"
+  const [savedSession, setSavedSession] = useState(null);
+  const [autosaveStatus, setAutosaveStatus] = useState("idle");
+  const [restoredSession, setRestoredSession] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+  const tokenRef = useRef(null);
+
+  // ── load token once
+  useEffect(() => {
+    try {
+      const raw = Cookies.get("user");
+      if (raw) tokenRef.current = JSON.parse(raw)?.token;
+    } catch {}
+  }, []);
+
+  // ── online/offline detection
+  useEffect(() => {
+    const onOnline  = () => { setIsOnline(true);  setAutosaveStatus("idle"); };
+    const onOffline = () => { setIsOnline(false);  setAutosaveStatus("offline"); };
+    window.addEventListener("online",  onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online",  onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, []);
+
+  // ── data queries
   const { data: quizPayload, isLoading } = useQuery({
     queryKey: ["questions", { id }],
     queryFn: getQuestions,
@@ -139,24 +258,126 @@ export default function QuizPage() {
     queryFn: getSettings,
   });
 
-  const quizData = quizPayload?.questions ?? [];
-  const quizMeta = quizPayload?.quiz ?? null;
-  const isSession = quizMeta?.isSession ?? false;
-  const sessionExpiredInitially = quizMeta?.sessionExpired ?? false;
+  const quizData            = quizPayload?.questions ?? [];
+  const quizMeta            = quizPayload?.quiz ?? null;
+  const isSession           = quizMeta?.isSession ?? false;
+  const sessionExpiredInit  = quizMeta?.sessionExpired ?? false;
 
   const GLOBAL_TIMER = settingsData?.quizTimerSeconds ?? 10;
-  // Per-question timer: use question's timerSeconds if set, else global
-  const getTimerForQuestion = useCallback((q) => {
-    return q?.timerSeconds ?? GLOBAL_TIMER;
-  }, [GLOBAL_TIMER]);
+  const getTimerForQuestion = useCallback((q) => q?.timerSeconds ?? GLOBAL_TIMER, [GLOBAL_TIMER]);
   const TIMER_MAX = quizData?.length ? getTimerForQuestion(quizData[currentIndex]) : GLOBAL_TIMER;
 
+  // ── fetch or create backend session once quiz data is ready
   useEffect(() => {
-    if (settingsData && quizData?.length) {
+    if (isLoading || !quizData?.length || !tokenRef.current) return;
+    if (sessionPhase !== "loading") return;
+
+    getOrCreateSession({ quizId: id, token: tokenRef.current })
+      .then(({ session, isNew }) => {
+        if (!isNew && session?.answers?.length > 0) {
+          setSavedSession(session);
+          setSessionPhase("prompt");
+        } else {
+          setSessionPhase("active");
+          setTimeLeft(getTimerForQuestion(quizData[0]));
+        }
+      })
+      .catch(() => {
+        // Backend unavailable — fall back to localStorage draft
+        const draft = _loadLocalDraft(id);
+        if (draft?.answers?.length > 0) {
+          setSavedSession(draft);
+          setSessionPhase("prompt");
+        } else {
+          setSessionPhase("active");
+          setTimeLeft(getTimerForQuestion(quizData[0]));
+        }
+      });
+  }, [isLoading, quizData, id, sessionPhase, getTimerForQuestion]);
+
+  // ── set timer once quiz becomes active (fresh start)
+  useEffect(() => {
+    if (sessionPhase === "active" && settingsData && quizData?.length && timeLeft === null) {
       setTimeLeft(getTimerForQuestion(quizData[0]));
     }
-  }, [settingsData, quizData]);
+  }, [sessionPhase, settingsData, quizData, timeLeft, getTimerForQuestion]);
 
+  // ── RESUME handler
+  const handleResume = useCallback(() => {
+    if (!savedSession) return;
+    const restoredAnswers = savedSession.answers ?? [];
+    const restoredIndex   = savedSession.currentIndex ?? 0;
+
+    // Rebuild selectedOptions map from saved answers
+    const opts = {};
+    restoredAnswers.forEach((a) => {
+      if (a.selectedOptions?.length > 0) opts[a.questionId] = a.selectedOptions;
+      else if (a.selectedOption !== null && a.selectedOption !== undefined) opts[a.questionId] = a.selectedOption;
+    });
+
+    setAnswers(restoredAnswers);
+    setSelectedOptions(opts);
+    setCurrentIndex(restoredIndex);
+    setTimeLeft(getTimerForQuestion(quizData[restoredIndex]));
+    setRestoredSession(true);
+    setSessionPhase("active");
+
+    // Fade out "restored" badge after 4s
+    setTimeout(() => setRestoredSession(false), 4000);
+  }, [savedSession, quizData, getTimerForQuestion]);
+
+  // ── DISCARD handler
+  const handleDiscard = useCallback(async () => {
+    try {
+      if (tokenRef.current) await discardQuizSession({ quizId: id, token: tokenRef.current });
+    } catch {}
+    localStorage.removeItem(LS_KEY(id));
+    setSavedSession(null);
+    setSessionPhase("active");
+    setTimeLeft(getTimerForQuestion(quizData[0]));
+  }, [id, quizData, getTimerForQuestion]);
+
+  // ── auto-save core
+  const performSave = useCallback(async (currentAnswers, idx) => {
+    if (!tokenRef.current || !isOnline) {
+      _saveLocalDraft(id, { answers: currentAnswers, currentIndex: idx });
+      return;
+    }
+    setAutosaveStatus("saving");
+    try {
+      await saveSessionProgress({
+        quizId: id,
+        answers: currentAnswers,
+        currentIndex: idx,
+        token: tokenRef.current,
+      });
+      _saveLocalDraft(id, { answers: currentAnswers, currentIndex: idx });
+      setAutosaveStatus("saved");
+    } catch {
+      // Network failed — keep local copy safe
+      _saveLocalDraft(id, { answers: currentAnswers, currentIndex: idx });
+      setAutosaveStatus("offline");
+    }
+  }, [id, isOnline]);
+
+  const debouncedSave = useDebounce(performSave, 1500);
+
+  // ── save on answer change
+  useEffect(() => {
+    if (sessionPhase !== "active" || !answers.length) return;
+    debouncedSave(answers, currentIndex);
+  }, [answers, sessionPhase]); // intentionally excludes currentIndex & debouncedSave to avoid re-triggering on nav
+
+  // ── periodic save every 15s
+  useEffect(() => {
+    if (sessionPhase !== "active") return;
+    const id15 = setInterval(() => {
+      if (answers.length) performSave(answers, currentIndex);
+    }, 15_000);
+    return () => clearInterval(id15);
+  }, [sessionPhase, answers, currentIndex, performSave]);
+
+  // ── submission
   const { mutate, data: submitData, isPending } = useMutation({
     mutationFn: ({ values, token }) => submitQuiz({ values, token }),
   });
@@ -181,17 +402,17 @@ export default function QuizPage() {
       { values: { quizId: id, answers: finalAnswers }, token },
       {
         onSuccess: (data) => {
+          localStorage.removeItem(LS_KEY(id));
           if (typeof document !== "undefined" && document.exitFullscreen)
             document.exitFullscreen().catch(() => {});
           messageApi.open({ type: "success", content: data.message, onClose: () => router.push("/profile") });
         },
         onError: (err) => {
           const msg = err.response?.data?.message || err.response?.data?.error || "Submission failed";
-          if (err.response?.status === 403) {
+          if (err.response?.status === 403)
             messageApi.error("Session expired — your answers could not be submitted.");
-          } else {
+          else
             messageApi.error(msg);
-          }
         },
       }
     );
@@ -199,7 +420,7 @@ export default function QuizPage() {
 
   const isCurrentAnswered = useCallback(() => {
     if (!quizData) return false;
-    const q = quizData[currentIndex];
+    const q   = quizData[currentIndex];
     const sel = selectedOptions[q._id];
     if (q.isMultiSelect) return Array.isArray(sel) && sel.length > 0;
     return sel !== undefined;
@@ -220,33 +441,33 @@ export default function QuizPage() {
     }
   }, [quizData, currentIndex, isCurrentAnswered, messageApi, handleSubmit, getTimerForQuestion]);
 
-  // Fullscreen
+  // ── fullscreen
   useEffect(() => {
-    if (!isLoading && quizData?.length) {
-      const el = document.documentElement;
-      (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen)?.call(el)?.catch?.(() => {});
-      const onChange = () => setIsFullscreen(!!document.fullscreenElement);
-      document.addEventListener("fullscreenchange", onChange);
-      document.addEventListener("webkitfullscreenchange", onChange);
-      return () => {
-        document.removeEventListener("fullscreenchange", onChange);
-        document.removeEventListener("webkitfullscreenchange", onChange);
-      };
-    }
-  }, [isLoading, quizData]);
+    if (sessionPhase !== "active" || !quizData?.length) return;
+    const el = document.documentElement;
+    (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen)?.call(el)?.catch?.(() => {});
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
+    };
+  }, [sessionPhase, quizData]);
 
-  // Block back/unload
+  // ── block back/unload
   useEffect(() => {
+    if (sessionPhase !== "active") return;
     const handler = (e) => { e.preventDefault(); e.returnValue = ""; };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, []);
+  }, [sessionPhase]);
 
-  // Per-question timer
+  // ── per-question timer
   useEffect(() => {
-    if (!quizData?.length || timeLeft === null) return;
+    if (sessionPhase !== "active" || !quizData?.length || timeLeft === null) return;
     if (timeLeft <= 0) {
-      const q = quizData[currentIndex];
+      const q   = quizData[currentIndex];
       const qId = q._id;
       setAnswers((prev) =>
         prev.find((a) => a.questionId === qId)
@@ -263,8 +484,9 @@ export default function QuizPage() {
     }
     const timer = setInterval(() => setTimeLeft((t) => t - 1), 1000);
     return () => clearInterval(timer);
-  }, [timeLeft, currentIndex, quizData, handleSubmit, TIMER_MAX]);
+  }, [timeLeft, currentIndex, quizData, handleSubmit, TIMER_MAX, sessionPhase]);
 
+  // ── answer handlers
   const handleSingleClick = (qId, optIdx) => {
     setSelectedOptions((prev) => ({ ...prev, [qId]: optIdx }));
     setAnswers((prev) => {
@@ -277,13 +499,13 @@ export default function QuizPage() {
 
   const handleMultiToggle = (qId, optIdx) => {
     setSelectedOptions((prev) => {
-      const cur = Array.isArray(prev[qId]) ? prev[qId] : [];
+      const cur  = Array.isArray(prev[qId]) ? prev[qId] : [];
       const next = cur.includes(optIdx) ? cur.filter((i) => i !== optIdx) : [...cur, optIdx];
       return { ...prev, [qId]: next };
     });
     setAnswers((prev) => {
       const existing = prev.find((a) => a.questionId === qId);
-      const cur = existing?.selectedOptions ?? [];
+      const cur  = existing?.selectedOptions ?? [];
       const next = cur.includes(optIdx) ? cur.filter((i) => i !== optIdx) : [...cur, optIdx];
       return existing
         ? prev.map((a) => a.questionId === qId ? { ...a, selectedOptions: next } : a)
@@ -291,18 +513,28 @@ export default function QuizPage() {
     });
   };
 
-  if (isLoading || timeLeft === null) return <Loader />;
+  // ── render gates
+  if (isLoading || sessionPhase === "loading") return <Loader />;
+  if (sessionExpiredInit || sessionExpiredMidQuiz) return <SessionExpiredScreen />;
 
-  // Session expired before student even started
-  if (sessionExpiredInitially || sessionExpiredMidQuiz) return <SessionExpiredScreen />;
+  if (sessionPhase === "prompt" && savedSession) {
+    return (
+      <ResumeModal
+        answeredCount={savedSession.answers?.length ?? 0}
+        onResume={handleResume}
+        onDiscard={handleDiscard}
+      />
+    );
+  }
 
+  if (timeLeft === null) return <Loader />;
   if (!quizData?.length) return <p className="text-center py-20 text-slate-500">No quiz data available.</p>;
 
-  const currentQ = quizData[currentIndex];
+  const currentQ    = quizData[currentIndex];
   const { questionText, _id, options, isMultiSelect } = currentQ;
-  const progress = (currentIndex / quizData.length) * 100;
-  const isUrgent = timeLeft <= 3;
-  const LABELS = ["A", "B", "C", "D"];
+  const progress    = (currentIndex / quizData.length) * 100;
+  const isUrgent    = timeLeft <= 3;
+  const LABELS      = ["A", "B", "C", "D"];
   const multiSelected = Array.isArray(selectedOptions[_id]) ? selectedOptions[_id] : [];
 
   return (
@@ -317,6 +549,7 @@ export default function QuizPage() {
         />
       )}
 
+      {/* Fullscreen gate */}
       {!isFullscreen && (
         <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-6 text-center">
           <div className="max-w-md bg-white rounded-3xl p-8 shadow-2xl">
@@ -333,6 +566,7 @@ export default function QuizPage() {
       )}
 
       <CameraWidget />
+      <AutosaveIndicator status={autosaveStatus} restoredSession={restoredSession} />
 
       <div className="w-full max-w-2xl fade-up">
         <div className="flex items-center justify-between mb-6">
@@ -474,4 +708,28 @@ export default function QuizPage() {
       </div>
     </div>
   );
+}
+
+// ── localStorage helpers ──────────────────────────────────────────────────────
+
+function _saveLocalDraft(quizId, data) {
+  try {
+    localStorage.setItem(LS_KEY(quizId), JSON.stringify({ ...data, savedAt: Date.now() }));
+  } catch {}
+}
+
+function _loadLocalDraft(quizId) {
+  try {
+    const raw = localStorage.getItem(LS_KEY(quizId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Discard drafts older than 24h
+    if (Date.now() - parsed.savedAt > 24 * 3_600_000) {
+      localStorage.removeItem(LS_KEY(quizId));
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
 }

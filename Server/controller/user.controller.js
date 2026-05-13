@@ -5,6 +5,7 @@ var jwt = require("jsonwebtoken");
 var Question = require("../model/question");
 var Response = require("../model/response");
 const { default: mongoose } = require("mongoose");
+const { markSessionSubmitted } = require("./session.controller");
 const cloudinary = require("cloudinary").v2;
 const speakeasy = require("speakeasy");
 const QRCode = require("qrcode");
@@ -219,6 +220,8 @@ const quizSubmission = async (req, res) => {
     await User.findByIdAndUpdate(userId, {
       $push: { quizzesTaken: quizId },
     });
+    // Mark any active quiz session as submitted (non-blocking)
+    markSessionSubmitted(userId, quizId);
     res.status(201).send({ message: "Quiz submitted successfully" });
   } catch (error) {
     res.status(500).send({ message: "Error submitting quiz", error });

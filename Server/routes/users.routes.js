@@ -12,6 +12,12 @@ const {
   getUserHistory,
 } = require("../controller/user.controller");
 
+const {
+  getOrCreateSession,
+  saveProgress,
+  discardSession,
+} = require("../controller/session.controller");
+
 const storage = multer.memoryStorage();
 const upload = multer({ storage }).single("file");
 const uploadPhoto = multer({ storage }).single("photo");
@@ -32,6 +38,11 @@ router.post("/chat", Authentication, aiChat);
 
 // Admin: view any user's quiz history
 router.get("/history/:userId", Authentication, getUserHistory);
+
+// Quiz session persistence
+router.get("/quiz-session/:quizId", Authentication, getOrCreateSession);
+router.patch("/quiz-session/:quizId/save", Authentication, saveProgress);
+router.delete("/quiz-session/:quizId", Authentication, discardSession);
 
 // 2FA routes
 router.post("/2fa/setup", Authentication, setup2FA);

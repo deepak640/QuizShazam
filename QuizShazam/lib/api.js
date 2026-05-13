@@ -151,3 +151,28 @@ export const getLeaderboardQuizzes = async () => {
   const res = await axios.get(`${API_URL}/getAllQuizzes`);
   return res.data;
 };
+
+// ── Quiz Session Persistence ──────────────────────────────────────────────────
+
+export const getOrCreateSession = async ({ quizId, token }) => {
+  const res = await axios.get(`${API_URL}/users/quiz-session/${quizId}`, {
+    headers: authHeader(token),
+  });
+  return res.data;
+};
+
+export const saveSessionProgress = async ({ quizId, answers, currentIndex, token }) => {
+  const res = await axios.patch(
+    `${API_URL}/users/quiz-session/${quizId}/save`,
+    { answers, currentIndex },
+    { headers: authHeader(token) }
+  );
+  return res.data;
+};
+
+export const discardQuizSession = async ({ quizId, token }) => {
+  const res = await axios.delete(`${API_URL}/users/quiz-session/${quizId}`, {
+    headers: authHeader(token),
+  });
+  return res.data;
+};
