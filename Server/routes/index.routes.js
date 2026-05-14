@@ -4,7 +4,7 @@ var Quiz = require("../model/quiz");
 var Question = require("../model/question");
 var userModel = require("../model/user");
 var Authentication = require("../middleware/auth");
-const { getAllusers, getById, sendResetLink, resetPassword, getUserStats, createSession, getAllsession, getSessionById, getSessionResults, extendSession, getAllQuizzes, shareQuiz, updateQuestion, getFailedQuestions, getWeakTopics, getUserPerformanceSummary, getSettings, updateSettings, getSessionAnalytics, getGlobalLeaderboard, getWeeklyLeaderboard, getQuizLeaderboard, getSubjectLeaderboard, getLeaderboardSubjects } = require("../controller/index.controller");
+const { getAllusers, getById, sendResetLink, resetPassword, getUserStats, createSession, getAllsession, getSessionById, getSessionResults, extendSession, getAllQuizzes, shareQuiz, updateQuestion, getFailedQuestions, getWeakTopics, getUserPerformanceSummary, getSettings, updateSettings, getSessionAnalytics, getGlobalLeaderboard, getWeeklyLeaderboard, getQuizLeaderboard, getSubjectLeaderboard, getLeaderboardSubjects, getCertificate } = require("../controller/index.controller");
 
 /* GET home page. */
 router.get("/", function (req, res, next) {
@@ -113,6 +113,9 @@ router.get("/analytics/user-performance", Authentication, getUserPerformanceSumm
 // Settings
 router.get("/settings", getSettings)
 router.put("/settings", Authentication, updateSettings)
+
+// Certificate (public — accessible via QR code scan)
+router.get("/certificate/:id", getCertificate)
 
 // Leaderboards (public)
 router.get("/leaderboard/global", getGlobalLeaderboard)

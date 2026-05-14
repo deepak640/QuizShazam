@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Cookies from "js-cookie";
 import Loader from "@/components/Loader";
 import { getResult, getWeakTopics } from "@/lib/api";
-import { IoArrowBack, IoCheckmarkCircle, IoCloseCircle, IoTrophyOutline, IoTimeOutline, IoStarOutline, IoBookOutline, IoLinkOutline } from "react-icons/io5";
+import { IoArrowBack, IoCheckmarkCircle, IoCloseCircle, IoTrophyOutline, IoTimeOutline, IoStarOutline, IoBookOutline, IoLinkOutline, IoRibbonOutline } from "react-icons/io5";
 
 const RADIUS = 52;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
@@ -27,7 +27,7 @@ export default function ResultPage() {
   });
 
   if (isLoading) return <Loader />;
-  const { answers, quiz, score } = data;
+  const { answers, quiz, score, _id: responseId } = data;
   const weakTopics = topicsData?.weakTopics ?? [];
 
   const total = answers.length;
@@ -104,8 +104,16 @@ export default function ResultPage() {
               </div>
 
               <h2 className="text-base font-bold text-white relative z-10 leading-snug mb-2">{quiz.title}</h2>
-              <div className="relative z-10">
+              <div className="relative z-10 flex flex-col items-center gap-2">
                 <ScoreBadge pct={pct} />
+                {pct >= 60 && responseId && (
+                  <button
+                    onClick={() => router.push(`/certificate/${responseId}`)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-semibold transition-all mt-1"
+                  >
+                    <IoRibbonOutline size={13} /> View Certificate
+                  </button>
+                )}
               </div>
             </div>
 
@@ -201,6 +209,14 @@ export default function ResultPage() {
                 <div className="flex gap-3 mt-2">
                   <span className="text-emerald-300 text-xs font-semibold flex items-center gap-1"><IoCheckmarkCircle size={13} />{correct}</span>
                   <span className="text-red-300 text-xs font-semibold flex items-center gap-1"><IoCloseCircle size={13} />{wrong}</span>
+                  {pct >= 60 && responseId && (
+                    <button
+                      onClick={() => router.push(`/certificate/${responseId}`)}
+                      className="text-yellow-300 text-xs font-semibold flex items-center gap-1"
+                    >
+                      <IoRibbonOutline size={13} /> Certificate
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

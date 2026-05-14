@@ -851,6 +851,33 @@ const updateSettings = async (req, res) => {
   }
 };
 
+const getCertificate = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const response = await Response.findById(id)
+      .populate("user", "username email")
+      .populate("quiz", "title subject");
+
+    if (!response) return res.status(404).json({ error: "Certificate not found" });
+
+    const totalQuestions = response.answers.length;
+    const percentage = totalQuestions ? Math.round((response.score / totalQuestions) * 100) : 0;
+
+    res.json({
+      certificateId: response._id,
+      studentName: response.user?.username || response.user?.email?.split("@")[0] || "Student",
+      quizTitle: response.quiz?.title || "Quiz",
+      quizSubject: response.quiz?.subject || "",
+      score: response.score,
+      totalQuestions,
+      percentage,
+      completedAt: response.createdAt,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 module.exports = {
   getAllusers,
   getById,
@@ -876,4 +903,5 @@ module.exports = {
   getQuizLeaderboard,
   getSubjectLeaderboard,
   getLeaderboardSubjects,
+  getCertificate,
 }

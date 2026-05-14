@@ -176,3 +176,8 @@ export const discardQuizSession = async ({ quizId, token }) => {
   });
   return res.data;
 };
+
+export const getCertificate = async (id) => {
+  const res = await axios.get(`${API_URL}/certificate/${id}`);
+  return res.data;
+};
