@@ -413,12 +413,23 @@ const updateQuestion = async (req, res) => {
 
 const updateQuiz = async (req, res) => {
   const { id } = req.params;
-  const { title, description, subject } = req.body;
+  const { title, description, subject, timerMinutes, allowPreviousQuestion, passingPercentage } = req.body;
   try {
     const update = {};
     if (title !== undefined && title.trim()) update.title = title.trim();
     if (description !== undefined) update.description = description;
     if (subject !== undefined && subject.trim()) update.subject = subject.trim();
+    if (timerMinutes !== undefined) {
+      const val = parseInt(timerMinutes);
+      if (!isNaN(val) && val >= 1) update.timerMinutes = val;
+    }
+    if (allowPreviousQuestion !== undefined) {
+      update.allowPreviousQuestion = Boolean(allowPreviousQuestion);
+    }
+    if (passingPercentage !== undefined) {
+      const val = parseInt(passingPercentage);
+      if (!isNaN(val) && val >= 1 && val <= 100) update.passingPercentage = val;
+    }
 
     const quiz = await Quiz.findByIdAndUpdate(id, update, { new: true });
     if (!quiz) return res.status(404).send({ message: "Quiz not found" });
@@ -857,16 +868,26 @@ const getSettings = async (req, res) => {
 
 const updateSettings = async (req, res) => {
   try {
-    const { quizTimerSeconds } = req.body;
+    const { quizTimerSeconds, defaultTimerMinutes, allowPreviousQuestion } = req.body;
     const update = {};
+
     if (quizTimerSeconds !== undefined) {
       const val = parseInt(quizTimerSeconds);
-      if (isNaN(val) || val < 5 || val > 120) {
+      if (isNaN(val) || val < 5 || val > 120)
         return res.status(400).json({ message: "Timer must be between 5 and 120 seconds" });
-      }
       update.quizTimerSeconds = val;
     }
-    let settings = await Settings.findOneAndUpdate({}, update, { new: true, upsert: true });
+    if (defaultTimerMinutes !== undefined) {
+      const val = parseInt(defaultTimerMinutes);
+      if (isNaN(val) || val < 1 || val > 180)
+        return res.status(400).json({ message: "Default timer must be between 1 and 180 minutes" });
+      update.defaultTimerMinutes = val;
+    }
+    if (allowPreviousQuestion !== undefined) {
+      update.allowPreviousQuestion = Boolean(allowPreviousQuestion);
+    }
+
+    const settings = await Settings.findOneAndUpdate({}, update, { new: true, upsert: true });
     res.json(settings);
   } catch (error) {
     res.status(500).json({ message: "Error updating settings", error: error.message });
@@ -910,7 +931,7 @@ const getCertificate = async (req, res) => {
   try {
     const response = await Response.findById(id)
       .populate("user", "username email")
-      .populate("quiz", "title subject")
+      .populate("quiz", "title subject passingPercentage")
       .populate("answers.questionId", "options isMultiSelect marks");
 
     if (!response) return res.status(404).json({ error: "Certificate not found" });
@@ -941,6 +962,19 @@ const getCertificate = async (req, res) => {
     }
 
     const percentage = totalMarks ? Math.round((earnedMarks / totalMarks) * 100) : 0;
+
+    const passingPercentage = response.quiz?.passingPercentage ?? 70;
+    if (percentage < passingPercentage) {
+      return res.status(403).json({
+        error: "not_passed",
+        message: "You have not passed this quiz",
+        percentage,
+        passingPercentage,
+        score: earnedMarks,
+        totalMarks,
+        quizId: response.quiz?._id,
+      });
+    }
 
     res.json({
       certificateId: response._id,

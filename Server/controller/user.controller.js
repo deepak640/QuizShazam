@@ -184,7 +184,7 @@ const userResult = async (req, res) => {
   const { id } = req.params;
   try {
     const results = await Response.findOne({ user: userId, quiz: id })
-      .populate("quiz", "title")
+      .populate("quiz", "title passingPercentage")
       .populate("answers.questionId");
     res.status(200).send(results);
   } catch (error) {
@@ -208,7 +208,6 @@ const userQuestion = async (req, res) => {
       options: q.options,
       isMultiSelect: q.isMultiSelect,
       questionType: q.questionType || (q.isMultiSelect ? "multi" : "mcq"),
-      timerSeconds: q.timerSeconds ?? null,
       explanation: q.explanation,
       topic: q.topic,
       difficulty: q.difficulty,
@@ -275,6 +274,8 @@ const userQuestion = async (req, res) => {
         isSession,
         expiresAt: quiz.expiresAt || null,
         sessionExpired,
+        timerMinutes: quiz.timerMinutes ?? 5,
+        allowPreviousQuestion: quiz.allowPreviousQuestion ?? false,
       },
     });
   } catch (error) {
@@ -325,12 +326,17 @@ const quizSubmission = async (req, res) => {
       }
     }
 
+    const percentage = totalMarks > 0 ? (score / totalMarks) * 100 : 0;
+    const passingPercentage = quiz?.passingPercentage ?? 70;
+    const passed = percentage >= passingPercentage;
+
     const response = new Response({
       user: userId,
       quiz: quizId,
       answers,
       score,
       totalMarks,
+      passed,
     });
     await response.save();
     await User.findByIdAndUpdate(userId, {
@@ -350,7 +356,7 @@ const quizSubmission = async (req, res) => {
     // Award badges (non-blocking)
     const newBadges = await awardBadges(userId, score, answers.length, quizId, isDailyChallenge);
 
-    res.status(201).send({ message: "Quiz submitted successfully", newBadges });
+    res.status(201).send({ message: "Quiz submitted successfully", newBadges, passed, percentage: Math.round(percentage) });
   } catch (error) {
     res.status(500).send({ message: "Error submitting quiz", error });
   }

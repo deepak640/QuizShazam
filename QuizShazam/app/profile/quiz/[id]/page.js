@@ -52,6 +52,9 @@ export default function ResultPage() {
     return sum + (isAnswerCorrect(a) ? (a.questionId.marks ?? 1) : 0);
   }, 0);
   const totalMarks = answers.reduce((sum, a) => sum + (a.questionId.marks ?? 1), 0);
+  const marksPct = totalMarks > 0 ? Math.round((earnedMarks / totalMarks) * 100) : 0;
+  const passingPercentage = quiz?.passingPercentage ?? 70;
+  const passed = marksPct >= passingPercentage;
   const strokeDashoffset = CIRCUMFERENCE - (pct / 100) * CIRCUMFERENCE;
   const ringColor = pct >= 70 ? "#10b981" : pct >= 40 ? "#6366f1" : "#ef4444";
   const LABELS = ["A", "B", "C", "D"];
@@ -113,12 +116,29 @@ export default function ResultPage() {
               <h2 className="text-base font-bold text-white relative z-10 leading-snug mb-2">{quiz.title}</h2>
               <div className="relative z-10 flex flex-col items-center gap-2">
                 <ScoreBadge pct={pct} />
-                {pct >= 60 && responseId && (
+                {passed ? (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 border border-emerald-400/30 text-emerald-200">
+                    ✓ Passed — Certificate Available
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-500/20 border border-red-400/30 text-red-200">
+                    ✗ Not Passed — {marksPct}% / {passingPercentage}% needed
+                  </span>
+                )}
+                {passed && responseId && (
                   <button
                     onClick={() => router.push(`/certificate/${responseId}`)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-semibold transition-all mt-1"
                   >
                     <IoRibbonOutline size={13} /> View Certificate
+                  </button>
+                )}
+                {!passed && quiz?._id && (
+                  <button
+                    onClick={() => router.push(`/dashboard/quiz/${quiz._id}`)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-semibold transition-all mt-1"
+                  >
+                    ↺ Retake Quiz
                   </button>
                 )}
               </div>
@@ -216,7 +236,7 @@ export default function ResultPage() {
                 <div className="flex gap-3 mt-2">
                   <span className="text-emerald-300 text-xs font-semibold flex items-center gap-1"><IoCheckmarkCircle size={13} />{correct}</span>
                   <span className="text-red-300 text-xs font-semibold flex items-center gap-1"><IoCloseCircle size={13} />{wrong}</span>
-                  {pct >= 60 && responseId && (
+                  {passed && responseId && (
                     <button
                       onClick={() => router.push(`/certificate/${responseId}`)}
                       className="text-yellow-300 text-xs font-semibold flex items-center gap-1"
@@ -224,15 +244,23 @@ export default function ResultPage() {
                       <IoRibbonOutline size={13} /> Certificate
                     </button>
                   )}
+                  {!passed && quiz?._id && (
+                    <button
+                      onClick={() => router.push(`/dashboard/quiz/${quiz._id}`)}
+                      className="text-violet-300 text-xs font-semibold flex items-center gap-1"
+                    >
+                      ↺ Retake
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Section title */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <h3 className="text-base font-bold text-slate-800">
                 Review Answers
-                <span className="ml-2 text-xs font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{total} questions</span>
+                <span className="ml-2 text-xs font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{total} q&apos;s</span>
               </h3>
               <div className="flex items-center gap-3 text-xs font-semibold">
                 <span className="flex items-center gap-1 text-emerald-600"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />Correct</span>

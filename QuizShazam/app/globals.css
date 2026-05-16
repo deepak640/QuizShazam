@@ -70,3 +70,7 @@ input:focus, textarea:focus { outline: none; }
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #c4b5fd; border-radius: 3px; }
+
+/* Hide scrollbar on horizontal sliders */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }

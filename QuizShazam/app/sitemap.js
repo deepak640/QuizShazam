@@ -1,6 +1,6 @@
 export default function sitemap() {
   const base = process.env.NEXT_PUBLIC_SITE_URL || "https://quizshazam.com";
-  const now = new Date().toISOString();
+  const now = "2025-01-01T00:00:00.000Z";
 
   return [
     {

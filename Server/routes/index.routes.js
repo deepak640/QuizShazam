@@ -16,7 +16,7 @@ router.post("/create-quiz", Authentication, async (req, res) => {
   const array = req.body;
   try {
     const quizzes = await Promise.all(
-      array.map(async ({ title, description, questions, authorId }) => {
+      array.map(async ({ title, description, questions, authorId, timerMinutes, allowPreviousQuestion, passingPercentage }) => {
         const subjectName = title;
 
         let quizTitle = title;
@@ -41,7 +41,15 @@ router.post("/create-quiz", Authentication, async (req, res) => {
           quizTitle = `${subjectName} — ${tierLabel}`;
         }
 
-        const quiz = new Quiz({ title: quizTitle, subject: subjectName, description, author: authorId });
+        const quiz = new Quiz({
+          title: quizTitle,
+          subject: subjectName,
+          description,
+          author: authorId,
+          timerMinutes: timerMinutes ? parseInt(timerMinutes) : 5,
+          allowPreviousQuestion: allowPreviousQuestion === true || allowPreviousQuestion === "true",
+          passingPercentage: passingPercentage ? parseInt(passingPercentage) : 70,
+        });
         await quiz.save();
 
         await Promise.all(
@@ -60,7 +68,7 @@ router.post("/create-quiz", Authentication, async (req, res) => {
                 difficulty: ["easy", "medium", "hard"].includes(q.difficulty) ? q.difficulty : "easy",
                 isMultiSelect: q.questionType === "multi" || !!q.isMultiSelect,
                 questionType: ["mcq", "multi", "true_false"].includes(q.questionType) ? q.questionType : (q.isMultiSelect ? "multi" : "mcq"),
-                timerSeconds: q.timerSeconds != null ? parseInt(q.timerSeconds) || null : null,
+                // timerSeconds: q.timerSeconds != null ? parseInt(q.timerSeconds) || null : null, // deprecated: use quiz-level timerMinutes
                 marks: q.marks && q.marks >= 1 ? parseInt(q.marks) : 1,
               });
               await question.save();

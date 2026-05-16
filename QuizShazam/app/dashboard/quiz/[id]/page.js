@@ -19,6 +19,7 @@ import {
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
 const LS_KEY = (id) => `quiz_draft_${id}`;
+const LS_START_KEY = (id) => `quiz_start_${id}`;
 
 // ── Camera widget ─────────────────────────────────────────────────────────────
 function CameraWidget() {
@@ -205,6 +206,32 @@ function useDebounce(fn, delay) {
   }, [fn, delay]);
 }
 
+// ── Quiz-level timer bar ──────────────────────────────────────────────────────
+function QuizTimerBar({ quizTimeLeft, totalSeconds }) {
+  if (quizTimeLeft === null || totalSeconds === null) return null;
+  const pct = totalSeconds > 0 ? Math.max(0, (quizTimeLeft / totalSeconds) * 100) : 0;
+  const mm = String(Math.floor(quizTimeLeft / 60)).padStart(2, "0");
+  const ss = String(quizTimeLeft % 60).padStart(2, "0");
+  const isUrgent = quizTimeLeft <= 60;
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Quiz Timer</span>
+        <span className={`text-sm font-black tabular-nums ${isUrgent ? "text-red-500 animate-pulse" : "text-slate-700"}`}>
+          {mm}:{ss}
+        </span>
+      </div>
+      <div className="h-2 bg-slate-200 rounded-full overflow-hidden shadow-inner">
+        <div
+          className={`h-full rounded-full transition-all duration-1000 ${isUrgent ? "bg-gradient-to-r from-red-500 to-orange-400" : "bg-gradient-to-r from-violet-600 to-indigo-500"}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function QuizPage() {
   const { id } = useParams();
@@ -215,9 +242,15 @@ export default function QuizPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState([]);
   const [selectedOptions, setSelectedOptions] = useState({});
-  const [timeLeft, setTimeLeft] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [sessionExpiredMidQuiz, setSessionExpiredMidQuiz] = useState(false);
+
+  // ── quiz-level timer
+  const [quizTimeLeft, setQuizTimeLeft] = useState(null);   // seconds
+  const [quizTotalSeconds, setQuizTotalSeconds] = useState(null);
+
+  // ── answer locking
+  const [lockedQuestions, setLockedQuestions] = useState(new Set());
 
   // ── session persistence state
   const [sessionPhase, setSessionPhase] = useState("loading"); // "loading" | "prompt" | "active"
@@ -248,7 +281,6 @@ export default function QuizPage() {
   }, []);
 
   // ── data queries
-  // Pass token so the backend can personalize question order (smart randomization)
   const { data: quizPayload, isLoading } = useQuery({
     queryKey: ["questions", { id, token: tokenRef.current }],
     queryFn: getQuestions,
@@ -263,10 +295,8 @@ export default function QuizPage() {
   const quizMeta            = quizPayload?.quiz ?? null;
   const isSession           = quizMeta?.isSession ?? false;
   const sessionExpiredInit  = quizMeta?.sessionExpired ?? false;
-
-  const GLOBAL_TIMER = settingsData?.quizTimerSeconds ?? 10;
-  const getTimerForQuestion = useCallback((q) => q?.timerSeconds ?? GLOBAL_TIMER, [GLOBAL_TIMER]);
-  const TIMER_MAX = quizData?.length ? getTimerForQuestion(quizData[currentIndex]) : GLOBAL_TIMER;
+  const timerMinutes        = quizMeta?.timerMinutes ?? 5;
+  const allowPrevious       = quizMeta?.allowPreviousQuestion ?? false;
 
   // ── fetch or create backend session once quiz data is ready
   useEffect(() => {
@@ -279,8 +309,12 @@ export default function QuizPage() {
           setSavedSession(session);
           setSessionPhase("prompt");
         } else {
+          // Fresh start — record start time
+          localStorage.setItem(LS_START_KEY(id), String(Date.now()));
+          const totalSec = timerMinutes * 60;
+          setQuizTotalSeconds(totalSec);
+          setQuizTimeLeft(totalSec);
           setSessionPhase("active");
-          setTimeLeft(getTimerForQuestion(quizData[0]));
         }
       })
       .catch(() => {
@@ -290,18 +324,64 @@ export default function QuizPage() {
           setSavedSession(draft);
           setSessionPhase("prompt");
         } else {
+          localStorage.setItem(LS_START_KEY(id), String(Date.now()));
+          const totalSec = timerMinutes * 60;
+          setQuizTotalSeconds(totalSec);
+          setQuizTimeLeft(totalSec);
           setSessionPhase("active");
-          setTimeLeft(getTimerForQuestion(quizData[0]));
         }
       });
-  }, [isLoading, quizData, id, sessionPhase, getTimerForQuestion]);
+  }, [isLoading, quizData, id, sessionPhase, timerMinutes]);
 
-  // ── set timer once quiz becomes active (fresh start)
+  // ── submission
+  const { mutate, data: submitData, isPending } = useMutation({
+    mutationFn: ({ values, token }) => submitQuiz({ values, token }),
+  });
+
+  const buildFinalAnswers = useCallback(() => {
+    if (!quizData) return [];
+    return quizData.map((q) => {
+      const existing = answers.find((a) => a.questionId === q._id);
+      if (existing) return existing;
+      return q.isMultiSelect
+        ? { questionId: q._id, selectedOptions: [] }
+        : { questionId: q._id, selectedOption: null };
+    });
+  }, [quizData, answers]);
+
+  const handleSubmit = useCallback(() => {
+    if (!quizData) return;
+    const finalAnswers = buildFinalAnswers();
+    const userStr = Cookies.get("user");
+    const { token } = userStr ? JSON.parse(userStr) : {};
+    mutate(
+      { values: { quizId: id, answers: finalAnswers }, token },
+      {
+        onSuccess: (data) => {
+          localStorage.removeItem(LS_KEY(id));
+          localStorage.removeItem(LS_START_KEY(id));
+          if (typeof document !== "undefined" && document.exitFullscreen)
+            document.exitFullscreen().catch(() => {});
+          messageApi.open({ type: "success", content: data.message, onClose: () => router.push("/profile") });
+        },
+        onError: (err) => {
+          const msg = err.response?.data?.message || err.response?.data?.error || "Submission failed";
+          if (err.response?.status === 403)
+            messageApi.error("Session expired — your answers could not be submitted.");
+          else
+            messageApi.error(msg);
+        },
+      }
+    );
+  }, [quizData, buildFinalAnswers, id, mutate, messageApi, router]);
+
+  // ── quiz-level countdown
   useEffect(() => {
-    if (sessionPhase === "active" && settingsData && quizData?.length && timeLeft === null) {
-      setTimeLeft(getTimerForQuestion(quizData[0]));
-    }
-  }, [sessionPhase, settingsData, quizData, timeLeft, getTimerForQuestion]);
+    if (sessionPhase !== "active" || quizTimeLeft === null) return;
+    if (quizTimeLeft <= 0) { handleSubmit(); return; }
+    const timer = setInterval(() => setQuizTimeLeft((t) => Math.max(0, t - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [quizTimeLeft, sessionPhase, handleSubmit]);
 
   // ── RESUME handler
   const handleResume = useCallback(() => {
@@ -316,16 +396,40 @@ export default function QuizPage() {
       else if (a.selectedOption !== null && a.selectedOption !== undefined) opts[a.questionId] = a.selectedOption;
     });
 
+    // Restore locked questions (all that have been answered up to restoredIndex - 1)
+    const locked = new Set();
+    restoredAnswers.forEach((a, i) => {
+      if (i < restoredIndex) locked.add(a.questionId);
+    });
+    setLockedQuestions(locked);
+
     setAnswers(restoredAnswers);
     setSelectedOptions(opts);
     setCurrentIndex(restoredIndex);
-    setTimeLeft(getTimerForQuestion(quizData[restoredIndex]));
+
+    // Calculate remaining time from start timestamp
+    const totalSec = timerMinutes * 60;
+    const startTs = parseInt(localStorage.getItem(LS_START_KEY(id)) || "0", 10);
+    let remaining = totalSec;
+    if (startTs > 0) {
+      const elapsedSec = Math.floor((Date.now() - startTs) / 1000);
+      remaining = Math.max(0, totalSec - elapsedSec);
+    }
+    setQuizTotalSeconds(totalSec);
+    setQuizTimeLeft(remaining);
+    if (remaining <= 0) {
+      // Already expired — auto-submit immediately after mounting
+      setSessionPhase("active");
+      setTimeout(() => handleSubmit(), 100);
+      return;
+    }
+
     setRestoredSession(true);
     setSessionPhase("active");
 
     // Fade out "restored" badge after 4s
     setTimeout(() => setRestoredSession(false), 4000);
-  }, [savedSession, quizData, getTimerForQuestion]);
+  }, [savedSession, timerMinutes, id, handleSubmit]);
 
   // ── DISCARD handler
   const handleDiscard = useCallback(async () => {
@@ -333,10 +437,15 @@ export default function QuizPage() {
       if (tokenRef.current) await discardQuizSession({ quizId: id, token: tokenRef.current });
     } catch {}
     localStorage.removeItem(LS_KEY(id));
+    // Reset start time on fresh start
+    localStorage.setItem(LS_START_KEY(id), String(Date.now()));
     setSavedSession(null);
+    setLockedQuestions(new Set());
+    const totalSec = timerMinutes * 60;
+    setQuizTotalSeconds(totalSec);
+    setQuizTimeLeft(totalSec);
     setSessionPhase("active");
-    setTimeLeft(getTimerForQuestion(quizData[0]));
-  }, [id, quizData, getTimerForQuestion]);
+  }, [id, timerMinutes]);
 
   // ── auto-save core
   const performSave = useCallback(async (currentAnswers, idx) => {
@@ -378,47 +487,6 @@ export default function QuizPage() {
     return () => clearInterval(id15);
   }, [sessionPhase, answers, currentIndex, performSave]);
 
-  // ── submission
-  const { mutate, data: submitData, isPending } = useMutation({
-    mutationFn: ({ values, token }) => submitQuiz({ values, token }),
-  });
-
-  const buildFinalAnswers = useCallback(() => {
-    if (!quizData) return [];
-    return quizData.map((q) => {
-      const existing = answers.find((a) => a.questionId === q._id);
-      if (existing) return existing;
-      return q.isMultiSelect
-        ? { questionId: q._id, selectedOptions: [] }
-        : { questionId: q._id, selectedOption: null };
-    });
-  }, [quizData, answers]);
-
-  const handleSubmit = useCallback(() => {
-    if (!quizData) return;
-    const finalAnswers = buildFinalAnswers();
-    const userStr = Cookies.get("user");
-    const { token } = userStr ? JSON.parse(userStr) : {};
-    mutate(
-      { values: { quizId: id, answers: finalAnswers }, token },
-      {
-        onSuccess: (data) => {
-          localStorage.removeItem(LS_KEY(id));
-          if (typeof document !== "undefined" && document.exitFullscreen)
-            document.exitFullscreen().catch(() => {});
-          messageApi.open({ type: "success", content: data.message, onClose: () => router.push("/profile") });
-        },
-        onError: (err) => {
-          const msg = err.response?.data?.message || err.response?.data?.error || "Submission failed";
-          if (err.response?.status === 403)
-            messageApi.error("Session expired — your answers could not be submitted.");
-          else
-            messageApi.error(msg);
-        },
-      }
-    );
-  }, [quizData, buildFinalAnswers, id, mutate, messageApi, router]);
-
   const isCurrentAnswered = useCallback(() => {
     if (!quizData) return false;
     const q   = quizData[currentIndex];
@@ -430,17 +498,25 @@ export default function QuizPage() {
   const handleNext = useCallback(() => {
     if (!quizData) return;
     if (!isCurrentAnswered()) {
-      messageApi.warning("Please select an answer or wait for the timer");
+      messageApi.warning("Please select an answer before proceeding");
       return;
     }
+    const currentQ = quizData[currentIndex];
+    // Lock this question's answer
+    setLockedQuestions((prev) => new Set([...prev, currentQ._id]));
+
     if (currentIndex < quizData.length - 1) {
-      const nextQ = quizData[currentIndex + 1];
       setCurrentIndex((i) => i + 1);
-      setTimeLeft(getTimerForQuestion(nextQ));
     } else {
       handleSubmit();
     }
-  }, [quizData, currentIndex, isCurrentAnswered, messageApi, handleSubmit, getTimerForQuestion]);
+  }, [quizData, currentIndex, isCurrentAnswered, messageApi, handleSubmit]);
+
+  const handlePrevious = useCallback(() => {
+    if (currentIndex > 0) {
+      setCurrentIndex((i) => i - 1);
+    }
+  }, [currentIndex]);
 
   // ── fullscreen
   useEffect(() => {
@@ -464,31 +540,9 @@ export default function QuizPage() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [sessionPhase]);
 
-  // ── per-question timer
-  useEffect(() => {
-    if (sessionPhase !== "active" || !quizData?.length || timeLeft === null) return;
-    if (timeLeft <= 0) {
-      const q   = quizData[currentIndex];
-      const qId = q._id;
-      setAnswers((prev) =>
-        prev.find((a) => a.questionId === qId)
-          ? prev
-          : [...prev, q.isMultiSelect ? { questionId: qId, selectedOptions: [] } : { questionId: qId, selectedOption: null }]
-      );
-      if (currentIndex < quizData.length - 1) {
-        setCurrentIndex((i) => i + 1);
-        setTimeLeft(TIMER_MAX);
-      } else {
-        handleSubmit();
-      }
-      return;
-    }
-    const timer = setInterval(() => setTimeLeft((t) => t - 1), 1000);
-    return () => clearInterval(timer);
-  }, [timeLeft, currentIndex, quizData, handleSubmit, TIMER_MAX, sessionPhase]);
-
   // ── answer handlers
   const handleSingleClick = (qId, optIdx) => {
+    if (lockedQuestions.has(qId)) return;
     setSelectedOptions((prev) => ({ ...prev, [qId]: optIdx }));
     setAnswers((prev) => {
       const existing = prev.find((a) => a.questionId === qId);
@@ -499,6 +553,7 @@ export default function QuizPage() {
   };
 
   const handleMultiToggle = (qId, optIdx) => {
+    if (lockedQuestions.has(qId)) return;
     setSelectedOptions((prev) => {
       const cur  = Array.isArray(prev[qId]) ? prev[qId] : [];
       const next = cur.includes(optIdx) ? cur.filter((i) => i !== optIdx) : [...cur, optIdx];
@@ -528,15 +583,15 @@ export default function QuizPage() {
     );
   }
 
-  if (timeLeft === null) return <Loader />;
+  if (quizTimeLeft === null) return <Loader />;
   if (!quizData?.length) return <p className="text-center py-20 text-slate-500">No quiz data available.</p>;
 
   const currentQ    = quizData[currentIndex];
   const { questionText, _id, options, isMultiSelect } = currentQ;
   const progress    = (currentIndex / quizData.length) * 100;
-  const isUrgent    = timeLeft <= 3;
   const LABELS      = ["A", "B", "C", "D"];
   const multiSelected = Array.isArray(selectedOptions[_id]) ? selectedOptions[_id] : [];
+  const isLocked    = lockedQuestions.has(_id);
 
   return (
     <div className="min-h-screen bg-mesh flex flex-col items-center justify-center px-4 py-10 select-none">
@@ -588,6 +643,9 @@ export default function QuizPage() {
         </div>
 
         <div className="glass rounded-[2.5rem] shadow-2xl shadow-violet-100/50 p-8 md:p-12 border border-white">
+          {/* Quiz-level timer bar */}
+          <QuizTimerBar quizTimeLeft={quizTimeLeft} totalSeconds={quizTotalSeconds} />
+
           <div className="flex items-start justify-between mb-6 gap-6">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -599,29 +657,19 @@ export default function QuizPage() {
                     ☑ Multi-select
                   </span>
                 )}
+                {isLocked && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                    🔒 Locked
+                  </span>
+                )}
               </div>
               <h3 className="text-xl md:text-2xl font-extrabold text-slate-900 mt-1 leading-tight">{questionText}</h3>
               {isMultiSelect && (
                 <p className="text-xs text-slate-400 mt-1.5 font-medium">Select all correct answers</p>
               )}
-            </div>
-
-            {/* Circular per-question timer */}
-            <div className="relative shrink-0 w-20 h-20">
-              <svg width="80" height="80" className="-rotate-90">
-                <circle cx="40" cy="40" r={35} fill="none" stroke="#f1f5f9" strokeWidth="6" />
-                <circle
-                  cx="40" cy="40" r={35} fill="none"
-                  stroke={isUrgent ? "#ef4444" : "#7c3aed"}
-                  strokeWidth="6" strokeLinecap="round"
-                  strokeDasharray={219.91}
-                  strokeDashoffset={219.91 - (timeLeft / TIMER_MAX) * 219.91}
-                  style={{ transition: "stroke-dashoffset 0.9s linear, stroke 0.3s" }}
-                />
-              </svg>
-              <span className={`absolute inset-0 flex items-center justify-center text-lg font-black ${isUrgent ? "text-red-500 animate-pulse" : "text-violet-900"}`}>
-                {timeLeft}
-              </span>
+              {isLocked && (
+                <p className="text-xs text-amber-600 mt-1 font-medium">Answer locked — cannot be changed</p>
+              )}
             </div>
           </div>
 
@@ -633,10 +681,15 @@ export default function QuizPage() {
                 <button
                   key={i}
                   onClick={() => isMultiSelect ? handleMultiToggle(_id, i) : handleSingleClick(_id, i)}
+                  disabled={isLocked}
                   className={`w-full text-left flex items-center gap-5 px-6 py-4 rounded-2xl border-2 text-base font-bold transition-all duration-300 ${
-                    isSelected
-                      ? "border-violet-600 bg-violet-50 text-violet-900 shadow-lg shadow-violet-100 ring-2 ring-violet-600/10"
-                      : "border-slate-100 bg-white hover:border-violet-200 hover:bg-violet-50/30 text-slate-700 hover:shadow-md"
+                    isLocked
+                      ? isSelected
+                        ? "border-violet-400 bg-violet-50 text-violet-800 opacity-80 cursor-not-allowed"
+                        : "border-slate-100 bg-slate-50 text-slate-400 opacity-60 cursor-not-allowed"
+                      : isSelected
+                        ? "border-violet-600 bg-violet-50 text-violet-900 shadow-lg shadow-violet-100 ring-2 ring-violet-600/10"
+                        : "border-slate-100 bg-white hover:border-violet-200 hover:bg-violet-50/30 text-slate-700 hover:shadow-md"
                   }`}
                 >
                   {isMultiSelect ? (
@@ -664,11 +717,21 @@ export default function QuizPage() {
             </p>
           )}
 
-          <div className="flex">
+          <div className="flex gap-3">
+            {/* Previous button */}
+            {allowPrevious && currentIndex > 0 && (
+              <button
+                onClick={handlePrevious}
+                className="py-4 px-6 rounded-2xl border-2 border-slate-200 text-slate-600 text-base font-bold hover:bg-slate-50 hover:border-slate-300 transition-all"
+              >
+                ← Previous
+              </button>
+            )}
+
             {currentIndex < quizData.length - 1 ? (
               <button
                 onClick={handleNext}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-700 to-indigo-500 text-white text-base font-black hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-violet-200"
+                className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-violet-700 to-indigo-500 text-white text-base font-black hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-violet-200"
               >
                 Next Question →
               </button>
@@ -676,7 +739,7 @@ export default function QuizPage() {
               <button
                 onClick={handleSubmit}
                 disabled={isPending || !!submitData}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-700 to-indigo-500 text-white text-base font-black hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-violet-200 disabled:opacity-50"
+                className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-violet-700 to-indigo-500 text-white text-base font-black hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-violet-200 disabled:opacity-50"
               >
                 {isPending ? "Submitting…" : "Finish Assessment ✓"}
               </button>

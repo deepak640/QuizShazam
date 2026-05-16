@@ -11,6 +11,9 @@ const quizSchema = new Schema({
   expiresAt: { type: Date },
   isDeleted: { type: Boolean, default: false },
   deletedAt: { type: Date, default: null },
+  timerMinutes: { type: Number, default: 5, min: 1 },
+  allowPreviousQuestion: { type: Boolean, default: false },
+  passingPercentage: { type: Number, default: 70, min: 1, max: 100 },
 });
 
 const Quiz = mongoose.model("Quiz", quizSchema);

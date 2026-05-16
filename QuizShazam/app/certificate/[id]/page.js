@@ -10,6 +10,77 @@ import {
 } from "react-icons/io5";
 import Loader from "@/components/Loader";
 
+// ─── FailScreen ───────────────────────────────────────────────────────────────
+
+function FailScreen({ data }) {
+  const router = useRouter();
+  const gap = data.passingPercentage - data.percentage;
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
+      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-10 text-center">
+        <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
+          <span className="text-4xl">✗</span>
+        </div>
+        <h1 className="text-3xl font-black text-slate-900 mb-2">Not Passed</h1>
+        <p className="text-slate-500 mb-6">You need {data.passingPercentage}% to earn the certificate</p>
+
+        <div className="bg-slate-50 rounded-2xl p-5 mb-6 text-left space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">Your Score</span>
+            <span className="font-bold text-slate-800">{data.score}/{data.totalMarks} pts</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">Your Accuracy</span>
+            <span className="font-bold text-red-500">{data.percentage}%</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">Passing Mark</span>
+            <span className="font-bold text-slate-800">{data.passingPercentage}%</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">Gap to Pass</span>
+            <span className="font-bold text-amber-600">{gap}% more needed</span>
+          </div>
+        </div>
+
+        {/* Progress bar showing how close they were */}
+        <div className="mb-8">
+          <div className="w-full bg-slate-100 rounded-full h-3 relative">
+            <div
+              className="bg-red-400 h-3 rounded-full transition-all"
+              style={{ width: `${Math.min(data.percentage, 100)}%` }}
+            />
+            <div
+              className="absolute top-0 h-3 w-0.5 bg-slate-400"
+              style={{ left: `${data.passingPercentage}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-xs text-slate-400 mt-1">
+            <span>0%</span>
+            <span className="text-slate-600 font-semibold">Pass: {data.passingPercentage}%</span>
+            <span>100%</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => router.push(data.quizId ? `/dashboard/quiz/${data.quizId}` : `/dashboard`)}
+            className="w-full py-3.5 bg-gradient-to-r from-violet-700 to-indigo-500 text-white font-bold rounded-2xl shadow-lg hover:opacity-90 transition"
+          >
+            Retake Quiz →
+          </button>
+          <button
+            onClick={() => router.push("/profile")}
+            className="w-full py-3 border border-slate-200 text-slate-600 font-semibold rounded-2xl hover:bg-slate-50 transition text-sm"
+          >
+            View Profile
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PASS_THRESHOLD = 60;
@@ -67,12 +138,19 @@ export default function CertificatePage() {
   const [qrDataUrl, setQrDataUrl]   = useState(null);
   const [downloading, setDownloading] = useState(false);
   const [copied, setCopied]           = useState(false);
+  const [failData, setFailData]       = useState(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["certificate", id],
     queryFn:  () => getCertificate(id),
-    retry: 1,
+    retry: false,
   });
+
+  useEffect(() => {
+    if (error?.response?.status === 403 && error?.response?.data?.error === "not_passed") {
+      setFailData(error.response.data);
+    }
+  }, [error]);
 
   // Generate QR pointing at this certificate URL
   useEffect(() => {
@@ -140,6 +218,8 @@ export default function CertificatePage() {
   // ── Loading / error states ──────────────────────────────────────────────────
 
   if (isLoading) return <Loader />;
+
+  if (failData) return <FailScreen data={failData} />;
 
   if (error || !data) {
     return (

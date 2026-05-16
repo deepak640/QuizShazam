@@ -13,6 +13,7 @@ const responseSchema = new Schema({
   ],
   score: { type: Number },       // earned marks
   totalMarks: { type: Number },  // max possible marks for this quiz
+  passed: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });
 
