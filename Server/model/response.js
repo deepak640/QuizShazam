@@ -11,7 +11,8 @@ const responseSchema = new Schema({
       selectedOptions: [Number],     // multi-select: array of chosen indices
     },
   ],
-  score: { type: Number },
+  score: { type: Number },       // earned marks
+  totalMarks: { type: Number },  // max possible marks for this quiz
   createdAt: { type: Date, default: Date.now },
 });
 

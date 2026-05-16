@@ -4,7 +4,8 @@ var Quiz = require("../model/quiz");
 var Question = require("../model/question");
 var userModel = require("../model/user");
 var Authentication = require("../middleware/auth");
-const { getAllusers, getById, sendResetLink, resetPassword, getUserStats, createSession, getAllsession, getSessionById, getSessionResults, extendSession, getAllQuizzes, shareQuiz, updateQuestion, getFailedQuestions, getWeakTopics, getUserPerformanceSummary, getSettings, updateSettings, getSessionAnalytics, getGlobalLeaderboard, getWeeklyLeaderboard, getQuizLeaderboard, getSubjectLeaderboard, getLeaderboardSubjects, getCertificate } = require("../controller/index.controller");
+const { getAllusers, getById, sendResetLink, resetPassword, getUserStats, createSession, getAllsession, getSessionById, getSessionResults, extendSession, getAllQuizzes, shareQuiz, updateQuestion, updateQuiz, getFailedQuestions, getWeakTopics, getUserPerformanceSummary, getSettings, updateSettings, getSessionAnalytics, getGlobalLeaderboard, getWeeklyLeaderboard, getQuizLeaderboard, getSubjectLeaderboard, getLeaderboardSubjects, getCertificate, getDailyChallenge } = require("../controller/index.controller");
+const { getPublicProfile } = require("../controller/user.controller");
 
 /* GET home page. */
 router.get("/", function (req, res, next) {
@@ -17,8 +18,30 @@ router.post("/create-quiz", Authentication, async (req, res) => {
     const quizzes = await Promise.all(
       array.map(async ({ title, description, questions, authorId }) => {
         const subjectName = title;
-        const existingCount = await Quiz.countDocuments({ subject: subjectName, isDeleted: { $ne: true } });
-        const quiz = new Quiz({ title: `Test ${existingCount + 1}`, subject: subjectName, description, author: authorId });
+
+        let quizTitle = title;
+        // Auto-generate a descriptive title only when the provided title matches the subject (no custom title set)
+        // The frontend sends title=subject when no custom title is provided
+        // We detect this by checking if the title contains " — " already (custom) or not
+        if (title && !title.includes(" — ")) {
+          const existingCount = await Quiz.countDocuments({ subject: subjectName, isDeleted: { $ne: true } });
+          const TITLE_TIERS = [
+            "Fundamentals",
+            "Core Concepts",
+            "Intermediate Challenge",
+            "Advanced Concepts",
+            "Expert Level",
+            "Mastery Quiz",
+            "Deep Dive",
+            "Practice Series",
+            "Comprehensive Review",
+            "Ultimate Challenge",
+          ];
+          const tierLabel = TITLE_TIERS[existingCount % TITLE_TIERS.length];
+          quizTitle = `${subjectName} — ${tierLabel}`;
+        }
+
+        const quiz = new Quiz({ title: quizTitle, subject: subjectName, description, author: authorId });
         await quiz.save();
 
         await Promise.all(
@@ -38,6 +61,7 @@ router.post("/create-quiz", Authentication, async (req, res) => {
                 isMultiSelect: q.questionType === "multi" || !!q.isMultiSelect,
                 questionType: ["mcq", "multi", "true_false"].includes(q.questionType) ? q.questionType : (q.isMultiSelect ? "multi" : "mcq"),
                 timerSeconds: q.timerSeconds != null ? parseInt(q.timerSeconds) || null : null,
+                marks: q.marks && q.marks >= 1 ? parseInt(q.marks) : 1,
               });
               await question.save();
               quiz.questions.push(question);
@@ -105,6 +129,7 @@ router.get("/session/:id/results", Authentication, getSessionResults)
 router.patch("/session/:id/extend", Authentication, extendSession)
 
 router.put("/question/:id", Authentication, updateQuestion)
+router.patch("/quiz/:id", Authentication, updateQuiz)
 router.get("/analytics/sessions", Authentication, getSessionAnalytics)
 router.get("/analytics/failed-questions", Authentication, getFailedQuestions)
 router.get("/analytics/weak-topics", Authentication, getWeakTopics)
@@ -116,6 +141,12 @@ router.put("/settings", Authentication, updateSettings)
 
 // Certificate (public — accessible via QR code scan)
 router.get("/certificate/:id", getCertificate)
+
+// Daily challenge (public, optional auth for completion status)
+router.get("/daily-challenge", getDailyChallenge)
+
+// Public user profile
+router.get("/u/:username", getPublicProfile)
 
 // Leaderboards (public)
 router.get("/leaderboard/global", getGlobalLeaderboard)

@@ -2,12 +2,95 @@
 import { useQuery } from "@tanstack/react-query";
 import Cookies from "js-cookie";
 import Link from "next/link";
-import { IoSearchOutline, IoArrowForward } from "react-icons/io5";
+import { IoSearchOutline, IoArrowForward, IoFlashOutline, IoCheckmarkCircle, IoShareOutline, IoTimeOutline } from "react-icons/io5";
 import dynamic from "next/dynamic";
 import Loader from "@/components/Loader";
-import { getQuizzes } from "@/lib/api";
+import { getQuizzes, getDailyChallenge } from "@/lib/api";
 import dataNotFound from "@/public/dataNotFound.json";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+function useCountdown(targetDate) {
+  const [timeLeft, setTimeLeft] = useState("");
+  useEffect(() => {
+    if (!targetDate) return;
+    const tick = () => {
+      const diff = new Date(targetDate) - Date.now();
+      if (diff <= 0) { setTimeLeft("00:00:00"); return; }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setTimeLeft(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [targetDate]);
+  return timeLeft;
+}
+
+function DailyChallenge({ token }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["daily-challenge", { token }],
+    queryFn: getDailyChallenge,
+    staleTime: 60_000,
+  });
+  const countdown = useCountdown(data?.nextReset);
+  const [copied, setCopied] = useState(false);
+
+  if (isLoading || !data?.quiz) return null;
+
+  const handleShare = async () => {
+    const url = `${window.location.origin}/dashboard/quiz/${data.quiz._id}`;
+    if (navigator.share) {
+      await navigator.share({ title: `Daily Challenge: ${data.quiz.title}`, url }).catch(() => {});
+    } else {
+      await navigator.clipboard.writeText(url).catch(() => {});
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <div className="mb-8 relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 p-5 shadow-lg shadow-amber-200 text-white">
+      <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 90% 10%, white 1px, transparent 1px)", backgroundSize: "22px 22px" }} />
+      <div className="relative z-10 flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-white/20 border border-white/20 flex items-center justify-center shrink-0">
+            <IoFlashOutline size={20} className="text-yellow-200" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-200">Daily Challenge</span>
+              {data.completedToday && (
+                <span className="flex items-center gap-0.5 text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full">
+                  <IoCheckmarkCircle size={10} /> Done
+                </span>
+              )}
+            </div>
+            <p className="font-extrabold text-base leading-snug">{data.quiz.title}</p>
+            {data.quiz.subject && <p className="text-amber-200 text-xs">{data.quiz.subject}</p>}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {countdown && (
+            <div className="flex items-center gap-1.5 text-xs font-bold bg-black/15 px-3 py-1.5 rounded-xl">
+              <IoTimeOutline size={13} /> {countdown}
+            </div>
+          )}
+          <button onClick={handleShare} className="flex items-center gap-1.5 text-xs font-bold bg-white/15 hover:bg-white/25 border border-white/20 px-3 py-1.5 rounded-xl transition">
+            <IoShareOutline size={13} /> {copied ? "Copied!" : "Share"}
+          </button>
+          {!data.completedToday && (
+            <Link href={`/dashboard/quiz/${data.quiz._id}`}
+              className="flex items-center gap-1.5 text-xs font-bold bg-white text-amber-600 hover:bg-amber-50 px-3 py-1.5 rounded-xl transition">
+              Start <IoArrowForward size={13} />
+            </Link>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
@@ -69,6 +152,9 @@ export default function Dashboard() {
         <h2 className="text-3xl font-extrabold text-slate-900 mb-1">Quiz Library</h2>
         <p className="text-slate-500 text-sm">{subjects.length} subject{subjects.length !== 1 ? "s" : ""} · {quizzes.length} tests · {takenCount} completed</p>
       </div>
+
+      {/* Daily Challenge */}
+      <DailyChallenge token={token} />
 
       {/* Progress bar */}
       <div className="mb-8 bg-white rounded-2xl border border-violet-50 shadow-sm p-5 flex items-center gap-5">

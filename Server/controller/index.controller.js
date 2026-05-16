@@ -390,19 +390,41 @@ const shareQuiz = async (req, res) => {
 
 const updateQuestion = async (req, res) => {
   const { id } = req.params;
-  const { explanation, referenceLink, topic, difficulty } = req.body;
+  const { explanation, referenceLink, topic, difficulty, questionText, options, questionType, isMultiSelect } = req.body;
   try {
     const update = {};
     if (explanation !== undefined) update.explanation = explanation || null;
     if (referenceLink !== undefined) update.referenceLink = referenceLink || null;
     if (topic !== undefined) update.topic = topic || null;
     if (difficulty !== undefined && ["easy", "medium", "hard"].includes(difficulty)) update.difficulty = difficulty;
+    if (questionText !== undefined && questionText.trim()) update.questionText = questionText.trim();
+    if (Array.isArray(options) && options.length > 0) update.options = options;
+    if (questionType !== undefined && ["mcq", "multi", "true_false"].includes(questionType)) update.questionType = questionType;
+    if (isMultiSelect !== undefined) update.isMultiSelect = !!isMultiSelect;
+    if (req.body.marks !== undefined && req.body.marks >= 1) update.marks = parseInt(req.body.marks);
 
     const question = await Question.findByIdAndUpdate(id, update, { new: true });
     if (!question) return res.status(404).send({ message: "Question not found" });
     res.status(200).send(question);
   } catch (error) {
     res.status(500).send({ message: "Error updating question", error });
+  }
+};
+
+const updateQuiz = async (req, res) => {
+  const { id } = req.params;
+  const { title, description, subject } = req.body;
+  try {
+    const update = {};
+    if (title !== undefined && title.trim()) update.title = title.trim();
+    if (description !== undefined) update.description = description;
+    if (subject !== undefined && subject.trim()) update.subject = subject.trim();
+
+    const quiz = await Quiz.findByIdAndUpdate(id, update, { new: true });
+    if (!quiz) return res.status(404).send({ message: "Quiz not found" });
+    res.status(200).send(quiz);
+  } catch (error) {
+    res.status(500).send({ message: "Error updating quiz", error });
   }
 };
 
@@ -851,24 +873,82 @@ const updateSettings = async (req, res) => {
   }
 };
 
+const getDailyChallenge = async (req, res) => {
+  try {
+    const quizzes = await Quiz.find({ isDeleted: { $ne: true }, expiresAt: null }).select("_id title subject");
+    if (!quizzes.length) return res.status(404).json({ error: "No quizzes available" });
+
+    // Deterministic pick: days since epoch mod quiz count
+    const dayIndex = Math.floor(Date.now() / 86400000);
+    const quiz = quizzes[dayIndex % quizzes.length];
+
+    // Next reset at midnight UTC
+    const now = new Date();
+    const nextReset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+
+    // Check if requesting user already completed it today
+    let completedToday = false;
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith("Bearer ")) {
+      try {
+        const token = authHeader.slice(7);
+        const decoded = require("jsonwebtoken").verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id).select("dailyChallengeDate");
+        const today = now.toISOString().slice(0, 10);
+        completedToday = user?.dailyChallengeDate === today;
+      } catch (_) {}
+    }
+
+    res.json({ quiz, completedToday, nextReset });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to get daily challenge" });
+  }
+};
+
 const getCertificate = async (req, res) => {
   const { id } = req.params;
   try {
     const response = await Response.findById(id)
       .populate("user", "username email")
-      .populate("quiz", "title subject");
+      .populate("quiz", "title subject")
+      .populate("answers.questionId", "options isMultiSelect marks");
 
     if (!response) return res.status(404).json({ error: "Certificate not found" });
 
     const totalQuestions = response.answers.length;
-    const percentage = totalQuestions ? Math.round((response.score / totalQuestions) * 100) : 0;
+
+    // Recalculate marks the same way the profile page does.
+    let earnedMarks = 0;
+    let totalMarks = 0;
+    let correctCount = 0;
+    for (const a of response.answers) {
+      const q = a.questionId;
+      if (!q) continue;
+      const qMarks = q.marks ?? 1;
+      totalMarks += qMarks;
+      let isCorrect = false;
+      if (q.isMultiSelect) {
+        const correctIndices = q.options.map((o, i) => o.isCorrect ? i : -1).filter(i => i !== -1);
+        const selected = Array.isArray(a.selectedOptions) ? a.selectedOptions : [];
+        isCorrect = correctIndices.length > 0 &&
+          correctIndices.every(i => selected.includes(i)) &&
+          selected.every(i => correctIndices.includes(i));
+      } else {
+        const correctIdx = q.options.findIndex(o => o.isCorrect);
+        isCorrect = a.selectedOption === correctIdx;
+      }
+      if (isCorrect) { earnedMarks += qMarks; correctCount++; }
+    }
+
+    const percentage = totalMarks ? Math.round((earnedMarks / totalMarks) * 100) : 0;
 
     res.json({
       certificateId: response._id,
       studentName: response.user?.username || response.user?.email?.split("@")[0] || "Student",
       quizTitle: response.quiz?.title || "Quiz",
       quizSubject: response.quiz?.subject || "",
-      score: response.score,
+      score: earnedMarks,
+      totalMarks,
       totalQuestions,
       percentage,
       completedAt: response.createdAt,
@@ -892,6 +972,7 @@ module.exports = {
   sendResetLink,
   resetPassword,
   updateQuestion,
+  updateQuiz,
   getFailedQuestions,
   getWeakTopics,
   getUserPerformanceSummary,
@@ -904,4 +985,5 @@ module.exports = {
   getSubjectLeaderboard,
   getLeaderboardSubjects,
   getCertificate,
+  getDailyChallenge,
 }

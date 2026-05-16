@@ -2,6 +2,7 @@
 const nextConfig = {
   compress: true,
   poweredByHeader: false,
+  serverExternalPackages: ["html2canvas", "jspdf", "qrcode"],
   async headers() {
     return [
       {

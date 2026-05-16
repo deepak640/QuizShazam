@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { message } from "antd";
 import dynamic from "next/dynamic";
 import Loader from "@/components/Loader";
-import { getProfile, userStats } from "@/lib/api";
+import { getProfile, userStats, getUserBadges } from "@/lib/api";
 import {
   IoArrowForward, IoTrophyOutline, IoBarChartOutline, IoBookOutline,
-  IoPersonOutline, IoCallOutline,
+  IoPersonOutline, IoCallOutline, IoRibbonOutline, IoShareOutline,
 } from "react-icons/io5";
 
 const BarChart = dynamic(() => import("@/components/BarChart"), { ssr: false });
@@ -25,12 +25,32 @@ export default function Profile() {
     queryFn: userStats,
     enabled: !!userData?.profile._id,
   });
+  const { data: badgesData } = useQuery({
+    queryKey: ["badges", { token }],
+    queryFn: getUserBadges,
+    enabled: !!token,
+  });
 
   if (isLoading) return <Loader />;
+  if (!userData?.profile) return <Loader />;
   const { profile, quizzes } = userData;
 
   const bestScore = stats?.length ? Math.max(...stats.map((s) => s.score || 0)) : 0;
   const avgScore = stats?.length ? Math.round(stats.reduce((a, s) => a + (s.score || 0), 0) / stats.length) : 0;
+
+  const badges = badgesData?.badges || [];
+  const earnedBadges = badges.filter(b => b.earned);
+  const lockedBadges = badges.filter(b => !b.earned);
+
+  const handleShareProfile = async () => {
+    const url = `${window.location.origin}/u/${profile.username}`;
+    if (navigator.share) {
+      await navigator.share({ title: `${profile.username} on QuizShazam`, url }).catch(() => {});
+    } else {
+      await navigator.clipboard.writeText(url).catch(() => {});
+      messageApi.success("Profile link copied!");
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 space-y-8">
@@ -55,11 +75,26 @@ export default function Profile() {
                   <IoCallOutline size={12} /> {profile.phone}
                 </p>
               )}
-              <span className="inline-block mt-2 text-xs bg-white/20 text-white px-3 py-1 rounded-full font-medium">
-                {quizzes.length} quiz{quizzes.length !== 1 ? "zes" : ""} completed
-              </span>
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-xs bg-white/20 text-white px-3 py-1 rounded-full font-medium">
+                  {quizzes.length} quiz{quizzes.length !== 1 ? "zes" : ""} completed
+                </span>
+                {earnedBadges.length > 0 && (
+                  <span className="text-xs bg-yellow-400/20 text-yellow-200 px-3 py-1 rounded-full font-medium">
+                    {earnedBadges.length} badge{earnedBadges.length !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
+          {profile.username && (
+            <button
+              onClick={handleShareProfile}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold transition-all"
+            >
+              <IoShareOutline size={13} /> Share Profile
+            </button>
+          )}
         </div>
       </div>
 
@@ -115,6 +150,43 @@ export default function Profile() {
           </div>
         )}
       </div>
+
+      {/* Badges */}
+      {badges.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="font-extrabold text-slate-800 text-lg flex items-center gap-2">
+              <IoRibbonOutline className="text-violet-500" size={18} /> Achievements
+            </h3>
+            <span className="text-xs text-slate-400 bg-slate-50 px-3 py-1 rounded-full">
+              {earnedBadges.length} / {badges.length} earned
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {badges.map(b => (
+              <div
+                key={b.id}
+                className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                  b.earned
+                    ? "border-violet-100 bg-violet-50/60"
+                    : "border-slate-100 bg-slate-50/50 opacity-40 grayscale"
+                }`}
+              >
+                <span className="text-2xl leading-none">{b.icon}</span>
+                <div className="min-w-0">
+                  <p className={`text-xs font-bold truncate ${b.earned ? "text-slate-800" : "text-slate-500"}`}>{b.label}</p>
+                  <p className="text-[10px] text-slate-400 truncate leading-tight">{b.desc}</p>
+                  {b.earned && b.earnedAt && (
+                    <p className="text-[10px] text-violet-500 font-medium mt-0.5">
+                      {new Date(b.earnedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats chart */}
       {stats?.length > 0 && (

@@ -13,6 +13,11 @@ const userSchema = new Schema({
   quizzesTaken: [{ type: Schema.Types.ObjectId, ref: "Quiz" }],
   twoFactorEnabled: { type: Boolean, default: false },
   twoFactorSecret: { type: String, default: "" },
+  badges: [{
+    id:       { type: String },
+    earnedAt: { type: Date, default: Date.now },
+  }],
+  dailyChallengeDate: { type: String, default: null }, // "YYYY-MM-DD" of last daily completion
   createdAt: { type: Date, default: Date.now },
 });
 

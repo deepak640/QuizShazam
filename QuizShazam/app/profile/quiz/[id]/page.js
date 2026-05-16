@@ -27,7 +27,7 @@ export default function ResultPage() {
   });
 
   if (isLoading) return <Loader />;
-  const { answers, quiz, score, _id: responseId } = data;
+  const { answers, quiz, _id: responseId } = data;
   const weakTopics = topicsData?.weakTopics ?? [];
 
   const total = answers.length;
@@ -42,9 +42,16 @@ export default function ResultPage() {
     const correctIdx = a.questionId.options.findIndex((o) => o.isCorrect);
     return a.selectedOption === correctIdx;
   };
+
   const correct = answers.filter(isAnswerCorrect).length;
   const wrong = total - correct;
   const pct = total ? Math.round((correct / total) * 100) : 0;
+
+  // Marks-based scoring: sum marks for each correctly answered question
+  const earnedMarks = answers.reduce((sum, a) => {
+    return sum + (isAnswerCorrect(a) ? (a.questionId.marks ?? 1) : 0);
+  }, 0);
+  const totalMarks = answers.reduce((sum, a) => sum + (a.questionId.marks ?? 1), 0);
   const strokeDashoffset = CIRCUMFERENCE - (pct / 100) * CIRCUMFERENCE;
   const ringColor = pct >= 70 ? "#10b981" : pct >= 40 ? "#6366f1" : "#ef4444";
   const LABELS = ["A", "B", "C", "D"];
@@ -131,8 +138,8 @@ export default function ResultPage() {
               </div>
               <div className="bg-white rounded-2xl border border-slate-200/70 p-4 text-center shadow-sm">
                 <IoTrophyOutline className="text-amber-400 mx-auto mb-1" size={22} />
-                <p className="text-2xl font-black text-slate-800">{score}</p>
-                <p className="text-xs text-slate-400 font-medium">Points</p>
+                <p className="text-2xl font-black text-slate-800">{earnedMarks}</p>
+                <p className="text-xs text-slate-400 font-medium">/ {totalMarks} pts</p>
               </div>
               <div className="bg-white rounded-2xl border border-slate-200/70 p-4 text-center shadow-sm">
                 <IoStarOutline className="text-violet-500 mx-auto mb-1" size={22} />
@@ -205,7 +212,7 @@ export default function ResultPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white font-bold text-sm truncate">{quiz.title}</p>
-                <p className="text-violet-200 text-xs mt-0.5">{correct}/{total} correct · {score} pts</p>
+                <p className="text-violet-200 text-xs mt-0.5">{correct}/{total} correct · {earnedMarks}/{totalMarks} pts</p>
                 <div className="flex gap-3 mt-2">
                   <span className="text-emerald-300 text-xs font-semibold flex items-center gap-1"><IoCheckmarkCircle size={13} />{correct}</span>
                   <span className="text-red-300 text-xs font-semibold flex items-center gap-1"><IoCloseCircle size={13} />{wrong}</span>

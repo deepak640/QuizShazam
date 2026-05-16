@@ -248,8 +248,9 @@ export default function QuizPage() {
   }, []);
 
   // ── data queries
+  // Pass token so the backend can personalize question order (smart randomization)
   const { data: quizPayload, isLoading } = useQuery({
-    queryKey: ["questions", { id }],
+    queryKey: ["questions", { id, token: tokenRef.current }],
     queryFn: getQuestions,
   });
 

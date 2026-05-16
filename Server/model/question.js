@@ -13,6 +13,7 @@ const questionSchema = new Schema({
   isMultiSelect: { type: Boolean, default: false },
   questionType: { type: String, enum: ["mcq", "multi", "true_false"], default: "mcq" },
   timerSeconds: { type: Number, default: null }, // null = use global timer
+  marks: { type: Number, default: 1, min: 1 },
 });
 
 const Question = mongoose.model("Question", questionSchema);

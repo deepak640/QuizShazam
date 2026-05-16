@@ -9,7 +9,7 @@ const {
   HomeRoute, register, login, googleLogin, userResult, quizSubmission,
   userProfile, quizMatrix, aiChat, userQuestion,
   updateProfile, setup2FA, enable2FA, disable2FA, validate2FALogin,
-  getUserHistory,
+  getUserHistory, getUserBadges,
 } = require("../controller/user.controller");
 
 const {
@@ -35,6 +35,9 @@ router.get("/profile", Authentication, userProfile);
 router.put("/profile", Authentication, uploadPhoto, updateProfile);
 router.get("/total-quizMatrix", Authentication, quizMatrix);
 router.post("/chat", Authentication, aiChat);
+
+// Badges
+router.get("/badges", Authentication, getUserBadges);
 
 // Admin: view any user's quiz history
 router.get("/history/:userId", Authentication, getUserHistory);

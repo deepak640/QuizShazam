@@ -1,8 +1,24 @@
 import axios from "axios";
+import Cookies from "js-cookie";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const authHeader = (token) => ({ Authorization: `Bearer ${token}` });
+
+// Auto-logout on invalid token response
+axios.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    const msg = err?.response?.data?.error || err?.response?.data?.message || "";
+    if (msg === "Invalid Token" || err?.response?.status === 401) {
+      Cookies.remove("user");
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(err);
+  }
+);
 
 export const getQuizzes = async ({ queryKey }) => {
   const [, { token }] = queryKey;
@@ -16,8 +32,9 @@ export const getAllQuizzesPublic = async () => {
 };
 
 export const getQuestions = async ({ queryKey }) => {
-  const [, { id }] = queryKey;
-  const res = await axios.get(`${API_URL}/users/quiz/${id}/questions`);
+  const [, { id, token }] = queryKey;
+  const headers = token ? authHeader(token) : {};
+  const res = await axios.get(`${API_URL}/users/quiz/${id}/questions`, { headers });
   // Backend now returns { questions, quiz } — normalise for consumers
   if (res.data && res.data.questions) return res.data;
   // Legacy fallback: array of questions
@@ -179,5 +196,24 @@ export const discardQuizSession = async ({ quizId, token }) => {
 
 export const getCertificate = async (id) => {
   const res = await axios.get(`${API_URL}/certificate/${id}`);
+  return res.data;
+};
+
+export const getUserBadges = async ({ queryKey }) => {
+  const [, { token }] = queryKey;
+  const res = await axios.get(`${API_URL}/users/badges`, { headers: authHeader(token) });
+  return res.data;
+};
+
+export const getDailyChallenge = async ({ queryKey }) => {
+  const [, { token }] = queryKey;
+  const headers = token ? authHeader(token) : {};
+  const res = await axios.get(`${API_URL}/daily-challenge`, { headers });
+  return res.data;
+};
+
+export const getPublicProfile = async ({ queryKey }) => {
+  const [, { username }] = queryKey;
+  const res = await axios.get(`${API_URL}/u/${encodeURIComponent(username)}`);
   return res.data;
 };

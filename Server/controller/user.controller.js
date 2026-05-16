@@ -9,6 +9,65 @@ const { markSessionSubmitted } = require("./session.controller");
 const cloudinary = require("cloudinary").v2;
 const speakeasy = require("speakeasy");
 const QRCode = require("qrcode");
+const BADGES = require("../config/badges");
+
+// ─── Badge award helper ────────────────────────────────────────────────────
+
+async function awardBadges(userId, score, totalQuestions, quizId, isDailyChallenge) {
+  try {
+    const user = await User.findById(userId);
+    if (!user) return [];
+
+    const earned = new Set((user.badges || []).map(b => b.id));
+    const newBadges = [];
+    const pct = totalQuestions ? Math.round((score / totalQuestions) * 100) : 0;
+    const quizCount = (user.quizzesTaken || []).length + 1; // +1 for this quiz
+
+    // Count responses where score >= 80%
+    const highScoreResponses = await Response.find({ user: userId })
+      .select("score answers");
+    const highCount = highScoreResponses.filter(r => {
+      const t = (r.answers || []).length;
+      return t > 0 && Math.round((r.score / t) * 100) >= 80;
+    }).length + (pct >= 80 ? 1 : 0);
+
+    const checks = [
+      ["first_quiz",    quizCount >= 1],
+      ["hat_trick",     quizCount >= 3],
+      ["quiz_master",   quizCount >= 10],
+      ["veteran",       quizCount >= 25],
+      ["perfect_score", pct === 100],
+      ["high_scorer",   pct >= 90],
+      ["sharpshooter",  highCount >= 5],
+      ["daily_champion", !!isDailyChallenge],
+    ];
+
+    // subject_expert: completed all non-deleted quizzes in this quiz's subject
+    const quiz = await Quiz.findById(quizId).select("subject");
+    if (quiz?.subject) {
+      const allInSubject = await Quiz.find({ subject: quiz.subject, isDeleted: { $ne: true } }).select("_id");
+      const takenIds = (user.quizzesTaken || []).map(String);
+      takenIds.push(String(quizId));
+      const completedAll = allInSubject.length > 1 && allInSubject.every(q => takenIds.includes(String(q._id)));
+      checks.push(["subject_expert", completedAll]);
+    }
+
+    for (const [id, condition] of checks) {
+      if (condition && !earned.has(id)) {
+        newBadges.push({ id, earnedAt: new Date() });
+        earned.add(id);
+      }
+    }
+
+    if (newBadges.length) {
+      await User.findByIdAndUpdate(userId, { $push: { badges: { $each: newBadges } } });
+    }
+    return newBadges;
+  } catch (e) {
+    console.error("Badge award error:", e.message);
+    return [];
+  }
+}
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -143,8 +202,7 @@ const userQuestion = async (req, res) => {
     const isSession = !!quiz.expiresAt;
     const sessionExpired = isSession && quiz.expiresAt < new Date();
 
-    // Shuffle questions for fairness
-    const questions = quiz.questions.map((q) => ({
+    let questions = quiz.questions.map((q) => ({
       _id: q._id,
       questionText: q.questionText,
       options: q.options,
@@ -155,6 +213,59 @@ const userQuestion = async (req, res) => {
       topic: q.topic,
       difficulty: q.difficulty,
     }));
+
+    // ── Smart randomization ───────────────────────────────────────────────
+    // Fisher-Yates shuffle
+    for (let i = questions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [questions[i], questions[j]] = [questions[j], questions[i]];
+    }
+
+    // Personalize order if user token provided: weak topics first
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith("Bearer ")) {
+      try {
+        const token = authHeader.slice(7);
+        const decoded = require("jsonwebtoken").verify(token, process.env.JWT_SECRET);
+        const userId = decoded.id;
+
+        // Get topics the user struggles with (accuracy < 60%)
+        const responses = await Response.find({ user: userId })
+          .populate({ path: "answers.questionId", select: "topic isMultiSelect options" });
+
+        const topicStats = {};
+        for (const resp of responses) {
+          for (const ans of resp.answers) {
+            const q = ans.questionId;
+            if (!q?.topic) continue;
+            if (!topicStats[q.topic]) topicStats[q.topic] = { correct: 0, total: 0 };
+            topicStats[q.topic].total++;
+            const correctIdx = q.options.findIndex(o => o.isCorrect);
+            if (ans.selectedOption === correctIdx) topicStats[q.topic].correct++;
+          }
+        }
+        const weakTopics = new Set(
+          Object.entries(topicStats)
+            .filter(([, s]) => s.total > 0 && (s.correct / s.total) < 0.6)
+            .map(([topic]) => topic)
+        );
+
+        if (weakTopics.size > 0) {
+          const weak = questions.filter(q => q.topic && weakTopics.has(q.topic));
+          const rest = questions.filter(q => !q.topic || !weakTopics.has(q.topic));
+          // Difficulty order within groups: easy → medium → hard
+          const diffOrder = { easy: 0, medium: 1, hard: 2 };
+          const sortDiff = (a, b) => (diffOrder[a.difficulty] ?? 1) - (diffOrder[b.difficulty] ?? 1);
+          questions = [...rest.sort(sortDiff), ...weak.sort(sortDiff)];
+        } else {
+          // No weak topics: easy → medium → hard progression
+          const diffOrder = { easy: 0, medium: 1, hard: 2 };
+          questions.sort((a, b) => (diffOrder[a.difficulty] ?? 1) - (diffOrder[b.difficulty] ?? 1));
+        }
+      } catch (_) {
+        // Token invalid or expired — use shuffled order as-is
+      }
+    }
 
     res.status(200).send({
       questions,
@@ -182,10 +293,14 @@ const quizSubmission = async (req, res) => {
     }
 
     let score = 0;
+    let totalMarks = 0;
 
     for (let answer of answers) {
       const question = await Question.findById(answer.questionId);
       if (!question) continue;
+
+      const qMarks = question.marks ?? 1;
+      totalMarks += qMarks;
 
       if (question.isMultiSelect) {
         const correctIndices = question.options
@@ -195,7 +310,7 @@ const quizSubmission = async (req, res) => {
         const allCorrectSelected = correctIndices.every((i) => selected.includes(i));
         const noWrongSelected = selected.every((i) => correctIndices.includes(i));
         if (correctIndices.length > 0 && allCorrectSelected && noWrongSelected) {
-          score += 1;
+          score += qMarks;
         }
       } else {
         const correctOption = question.options.find((opt) => opt.isCorrect);
@@ -205,7 +320,7 @@ const quizSubmission = async (req, res) => {
           answer.selectedOption !== undefined &&
           question.options[answer.selectedOption]?.text === correctOption.text
         ) {
-          score += 1;
+          score += qMarks;
         }
       }
     }
@@ -215,6 +330,7 @@ const quizSubmission = async (req, res) => {
       quiz: quizId,
       answers,
       score,
+      totalMarks,
     });
     await response.save();
     await User.findByIdAndUpdate(userId, {
@@ -222,7 +338,19 @@ const quizSubmission = async (req, res) => {
     });
     // Mark any active quiz session as submitted (non-blocking)
     markSessionSubmitted(userId, quizId);
-    res.status(201).send({ message: "Quiz submitted successfully" });
+
+    // Daily challenge check
+    const today = new Date().toISOString().slice(0, 10);
+    const user = await User.findById(userId).select("dailyChallengeDate");
+    const isDailyChallenge = req.body.isDailyChallenge && user?.dailyChallengeDate !== today;
+    if (isDailyChallenge) {
+      await User.findByIdAndUpdate(userId, { dailyChallengeDate: today });
+    }
+
+    // Award badges (non-blocking)
+    const newBadges = await awardBadges(userId, score, answers.length, quizId, isDailyChallenge);
+
+    res.status(201).send({ message: "Quiz submitted successfully", newBadges });
   } catch (error) {
     res.status(500).send({ message: "Error submitting quiz", error });
   }
@@ -674,6 +802,60 @@ const validate2FALogin = async (req, res) => {
   }
 };
 
+const getUserBadges = async (req, res) => {
+  const userId = req.user.id;
+  try {
+    const user = await User.findById(userId).select("badges");
+    const earned = (user?.badges || []).map(b => b.id);
+    const all = BADGES.map(b => ({
+      ...b,
+      earned: earned.includes(b.id),
+      earnedAt: user?.badges.find(ub => ub.id === b.id)?.earnedAt || null,
+    }));
+    res.json({ badges: all });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch badges" });
+  }
+};
+
+const getPublicProfile = async (req, res) => {
+  const { username } = req.params;
+  try {
+    const user = await User.findOne({ username }).select("username photoURL bio badges createdAt");
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const responses = await Response.find({ user: user._id }).select("score answers createdAt quiz");
+    const totalQuizzes = responses.length;
+    const avgScore = totalQuizzes
+      ? Math.round(responses.reduce((s, r) => {
+          const t = (r.answers || []).length;
+          return s + (t ? Math.round((r.score / t) * 100) : 0);
+        }, 0) / totalQuizzes)
+      : 0;
+    const bestScore = totalQuizzes
+      ? Math.max(...responses.map(r => {
+          const t = (r.answers || []).length;
+          return t ? Math.round((r.score / t) * 100) : 0;
+        }))
+      : 0;
+
+    const earnedBadges = BADGES.filter(b => (user.badges || []).some(ub => ub.id === b.id));
+
+    res.json({
+      username: user.username,
+      photoURL: user.photoURL || null,
+      bio: user.bio || null,
+      joinedAt: user.createdAt,
+      totalQuizzes,
+      avgScore,
+      bestScore,
+      badges: earnedBadges,
+    });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch profile" });
+  }
+};
+
 const getUserHistory = async (req, res) => {
   const { userId } = req.params;
   try {
@@ -709,4 +891,6 @@ module.exports = {
   disable2FA,
   validate2FALogin,
   getUserHistory,
+  getUserBadges,
+  getPublicProfile,
 }

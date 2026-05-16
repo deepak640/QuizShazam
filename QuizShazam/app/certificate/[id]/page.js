@@ -373,7 +373,7 @@ export default function CertificatePage() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, marginBottom: 36 }}>
 
               {[
-                { label: "Score",    value: `${data.score}/${data.totalQuestions}`, color: C.text },
+                { label: "Marks",    value: `${data.score}/${data.totalMarks ?? data.totalQuestions}`, color: C.text },
                 { label: "Accuracy", value: `${pct}%`,                              color: g.hex  },
               ].map(({ label, value, color }) => (
                 <div key={label} style={{

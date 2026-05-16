@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import Cookies from "js-cookie";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { IoArrowForward, IoCheckmarkCircle, IoArrowBack, IoSearchOutline } from "react-icons/io5";
+import { IoArrowForward, IoCheckmarkCircle, IoArrowBack, IoSearchOutline, IoShareOutline } from "react-icons/io5";
 import Loader from "@/components/Loader";
 import { getQuizzes } from "@/lib/api";
 import { useState } from "react";
@@ -169,22 +169,41 @@ export default function SubjectPage() {
                           </span>
                         </div>
 
-                        {!isTaken ? (
-                          <Link
-                            href={`/dashboard/quiz/${quiz._id}`}
-                            className={`flex items-center justify-center w-8 h-8 sm:w-auto sm:px-4 sm:py-1.5 rounded-full bg-gradient-to-r ${colorClass} text-white transition-transform active:scale-95 shadow-md shadow-violet-200/50`}
+                        <div className="flex items-center gap-2">
+                          {/* Share button */}
+                          <button
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              const url = `${window.location.origin}/dashboard/quiz/${quiz._id}`;
+                              if (navigator.share) {
+                                await navigator.share({ title: quiz.title, url }).catch(() => {});
+                              } else {
+                                await navigator.clipboard.writeText(url).catch(() => {});
+                              }
+                            }}
+                            className="flex items-center justify-center w-8 h-8 rounded-full border border-slate-200 text-slate-400 hover:text-violet-600 hover:border-violet-200 transition"
+                            title="Share quiz"
                           >
-                            <span className="hidden sm:inline text-xs font-bold mr-1">Start</span>
-                            <IoArrowForward size={14} />
-                          </Link>
-                        ) : (
-                          <Link
-                            href={`/profile`}
-                            className="hidden sm:flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-800 transition"
-                          >
-                            View result
-                          </Link>
-                        )}
+                            <IoShareOutline size={14} />
+                          </button>
+
+                          {!isTaken ? (
+                            <Link
+                              href={`/dashboard/quiz/${quiz._id}`}
+                              className={`flex items-center justify-center w-8 h-8 sm:w-auto sm:px-4 sm:py-1.5 rounded-full bg-gradient-to-r ${colorClass} text-white transition-transform active:scale-95 shadow-md shadow-violet-200/50`}
+                            >
+                              <span className="hidden sm:inline text-xs font-bold mr-1">Start</span>
+                              <IoArrowForward size={14} />
+                            </Link>
+                          ) : (
+                            <Link
+                              href={`/profile`}
+                              className="hidden sm:flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-800 transition"
+                            >
+                              View result
+                            </Link>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
