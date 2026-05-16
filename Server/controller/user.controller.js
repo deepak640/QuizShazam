@@ -488,6 +488,18 @@ const aiChat = async (req, res) => {
     const takenIds = (userDoc?.quizzesTaken ?? []).map(id => id.toString());
     const untried = quizzes.find(q => !takenIds.includes(q._id.toString()));
 
+    // ── Guest catch-all (no token) ────────────────────────────────────────
+    if (!userId) {
+      const guestReply =
+        `👋 Hi there! I'm **QuizBuddy**, your guide on QuizShazam.\n\n` +
+        `It looks like you're not logged in yet. Here's where to go:\n\n` +
+        `• 📝 **Register** — [Create a free account](/register) to get started\n` +
+        `• 🔐 **Login** — [Sign in](/login) if you already have an account\n` +
+        `• 🏠 **Browse Quizzes** — [Explore quizzes](/dashboard) (login required to attempt)\n\n` +
+        `Once you're logged in I can show your scores, recommend quizzes, track your progress, and a lot more! 🚀`;
+      return res.status(200).send(guestReply);
+    }
+
     // ── 1. Greetings ──────────────────────────────────────────────────────
     if (match("hi", "hello", "hey", "hola", "namaste", "yo ", "sup", "kaise ho", "kya haal", "नमस्ते", "kya chal")) {
       const greets = [

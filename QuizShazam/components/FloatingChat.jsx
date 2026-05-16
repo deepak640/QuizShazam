@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { chat } from "@/lib/api";
 import Cookies from "js-cookie";
 import { IoChatbubbleEllipses, IoClose, IoSend, IoSparklesOutline } from "react-icons/io5";
+import ReactMarkdown from "react-markdown";
 
 export default function FloatingChat() {
   const [isOpen, setIsOpen] = useState(false);
@@ -117,7 +118,19 @@ export default function FloatingChat() {
                     ? "bg-violet-600 text-white rounded-br-none" 
                     : "bg-white text-slate-700 border border-slate-100 rounded-bl-none"
                 }`}>
-                  {msg.text}
+                  <ReactMarkdown
+                    components={{
+                      p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+                      strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+                      a: ({ href, children }) => (
+                        <a href={href} className="underline hover:opacity-80 font-medium" target="_blank" rel="noreferrer">{children}</a>
+                      ),
+                      ul: ({ children }) => <ul className="list-disc pl-4 space-y-0.5 mt-1">{children}</ul>,
+                      li: ({ children }) => <li>{children}</li>,
+                    }}
+                  >
+                    {msg.text}
+                  </ReactMarkdown>
                 </div>
               </div>
             ))}

@@ -2,6 +2,7 @@ var multer = require("multer");
 var express = require("express");
 var router = express.Router();
 var Authentication = require("../middleware/auth");
+var { OptionalAuth } = require("../middleware/auth");
 
 require("dotenv").config();
 
@@ -34,7 +35,7 @@ router.post("/submit-quiz", Authentication, quizSubmission);
 router.get("/profile", Authentication, userProfile);
 router.put("/profile", Authentication, uploadPhoto, updateProfile);
 router.get("/total-quizMatrix", Authentication, quizMatrix);
-router.post("/chat", Authentication, aiChat);
+router.post("/chat", OptionalAuth, aiChat);
 
 // Badges
 router.get("/badges", Authentication, getUserBadges);
