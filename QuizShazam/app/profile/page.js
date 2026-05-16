@@ -163,10 +163,14 @@ export default function Profile() {
   const badges       = badgesData?.badges || [];
   const earnedBadges = badges.filter((b) => b.earned);
 
+  // Always use email prefix as slug — it's URL-safe and unique
+  const profileSlug = profile.email?.split("@")[0] || profile.username?.toLowerCase().replace(/\s+/g, "-");
+
   const handleShareProfile = async () => {
-    const url = `${window.location.origin}/u/${profile.username}`;
+    const url = `${window.location.origin}/u/${profileSlug}`;
+    const name = profile.username || profileSlug;
     if (navigator.share) {
-      await navigator.share({ title: `${profile.username} on QuizShazam`, url }).catch(() => {});
+      await navigator.share({ title: `${name} on QuizShazam`, url }).catch(() => {});
     } else {
       await navigator.clipboard.writeText(url).catch(() => {});
       messageApi.success("Profile link copied!");

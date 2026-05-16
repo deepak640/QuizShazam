@@ -7,6 +7,7 @@ import Loader from "@/components/Loader";
 import {
   IoArrowBack, IoTrophyOutline, IoStarOutline, IoBarChartOutline,
   IoCalendarOutline, IoRibbonOutline, IoPersonOutline,
+  IoCheckmarkCircle, IoCloseCircle, IoBookOutline,
 } from "react-icons/io5";
 
 const BADGE_META = {
@@ -130,9 +131,40 @@ export default function PublicProfilePage() {
           </div>
         )}
 
-        {data.badges?.length === 0 && (
+        {/* Recent Quizzes */}
+        {data.recentQuizzes?.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200/70 shadow-sm p-5">
+            <h2 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-1.5">
+              <IoBookOutline size={15} className="text-violet-500" />
+              Recent Quizzes · {data.recentQuizzes.length}
+            </h2>
+            <div className="space-y-2">
+              {data.recentQuizzes.map((q, i) => (
+                <div key={i} className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{q.title}</p>
+                    {q.subject && <p className="text-xs text-slate-400 truncate">{q.subject}</p>}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                      q.percentage >= 70 ? "bg-emerald-100 text-emerald-700"
+                      : q.percentage >= 40 ? "bg-blue-100 text-blue-700"
+                      : "bg-red-100 text-red-600"
+                    }`}>
+                      {q.percentage}%
+                    </span>
+                    {q.passed === true  && <IoCheckmarkCircle size={15} className="text-emerald-500" />}
+                    {q.passed === false && <IoCloseCircle     size={15} className="text-red-400" />}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {data.recentQuizzes?.length === 0 && (
           <div className="bg-white rounded-2xl border border-slate-200/70 shadow-sm p-8 text-center">
-            <p className="text-slate-400 text-sm">No badges earned yet.</p>
+            <p className="text-slate-400 text-sm">No quizzes taken yet.</p>
           </div>
         )}
       </div>

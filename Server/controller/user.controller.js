@@ -825,30 +825,58 @@ const getUserBadges = async (req, res) => {
 };
 
 const getPublicProfile = async (req, res) => {
-  const { username } = req.params;
+  const raw = req.params.username;
+  const slug = decodeURIComponent(raw).trim();
   try {
-    const user = await User.findOne({ username }).select("username photoURL bio badges createdAt");
+    // Primary: match by email prefix (the share URL always uses email prefix)
+    let user = await User.findOne({ email: new RegExp(`^${slug}@`, "i") }).select("username email photoURL bio badges createdAt");
+    // Fallback: match by username (case-insensitive)
+    if (!user) {
+      user = await User.findOne({ username: new RegExp(`^${slug}$`, "i") }).select("username email photoURL bio badges createdAt");
+    }
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    const responses = await Response.find({ user: user._id }).select("score answers createdAt quiz");
+    // Derive a display name: username if set, else email prefix
+    const displayName = user.username || user.email.split("@")[0];
+
+    const responses = await Response.find({ user: user._id })
+      .populate("quiz", "title subject")
+      .select("score totalMarks answers createdAt quiz passed")
+      .sort({ createdAt: -1 })
+      .lean();
+
     const totalQuizzes = responses.length;
+
+    // Use marks-based percentage when available, else answer-count fallback
+    const pctOf = (r) => {
+      if (r.totalMarks && r.totalMarks > 0) return Math.round((r.score / r.totalMarks) * 100);
+      const t = (r.answers || []).length;
+      return t ? Math.round((r.score / t) * 100) : 0;
+    };
+
     const avgScore = totalQuizzes
-      ? Math.round(responses.reduce((s, r) => {
-          const t = (r.answers || []).length;
-          return s + (t ? Math.round((r.score / t) * 100) : 0);
-        }, 0) / totalQuizzes)
+      ? Math.round(responses.reduce((s, r) => s + pctOf(r), 0) / totalQuizzes)
       : 0;
     const bestScore = totalQuizzes
-      ? Math.max(...responses.map(r => {
-          const t = (r.answers || []).length;
-          return t ? Math.round((r.score / t) * 100) : 0;
-        }))
+      ? Math.max(...responses.map(pctOf))
       : 0;
 
     const earnedBadges = BADGES.filter(b => (user.badges || []).some(ub => ub.id === b.id));
 
+    // Recent quiz results for the public profile (up to 10)
+    const recentQuizzes = responses.slice(0, 10).map((r) => ({
+      quizId:    r.quiz?._id,
+      title:     r.quiz?.title || "Untitled Quiz",
+      subject:   r.quiz?.subject || null,
+      score:     r.score,
+      totalMarks: r.totalMarks || (r.answers || []).length,
+      percentage: pctOf(r),
+      passed:    r.passed ?? null,
+      takenAt:   r.createdAt,
+    }));
+
     res.json({
-      username: user.username,
+      username: displayName,
       photoURL: user.photoURL || null,
       bio: user.bio || null,
       joinedAt: user.createdAt,
@@ -856,8 +884,10 @@ const getPublicProfile = async (req, res) => {
       avgScore,
       bestScore,
       badges: earnedBadges,
+      recentQuizzes,
     });
   } catch (e) {
+    console.error("getPublicProfile error:", e.message);
     res.status(500).json({ error: "Failed to fetch profile" });
   }
 };
