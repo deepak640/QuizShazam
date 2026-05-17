@@ -6,9 +6,12 @@ import Cookies from "js-cookie";
 import { message } from "antd";
 import dynamic from "next/dynamic";
 import Loader from "@/components/Loader";
+import ProctoringWarning from "@/components/ProctoringWarning";
+import { useProctoring } from "@/hooks/useProctoring";
 import {
   getQuestions, submitQuiz, getSettings,
   getOrCreateSession, saveSessionProgress, discardQuizSession,
+  getQuizProctoringConfig,
 } from "@/lib/api";
 import {
   IoVideocamOffOutline, IoVideocamOutline,
@@ -340,6 +343,7 @@ export default function QuizPage() {
   const [selectedOptions, setSelectedOptions] = useState({});
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [sessionExpiredMidQuiz, setSessionExpiredMidQuiz] = useState(false);
+  const [proctoringConfig, setProctoringConfig] = useState(null);
 
   // ── quiz-level timer
   const [quizTimeLeft, setQuizTimeLeft] = useState(null);   // seconds
@@ -355,6 +359,14 @@ export default function QuizPage() {
   const [restoredSession, setRestoredSession] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const tokenRef = useRef(null);
+  const sessionIdRef = useRef(null);
+
+  // ── load global proctoring config
+  useEffect(() => {
+    getQuizProctoringConfig()
+      .then(data => setProctoringConfig(data.proctoring))
+      .catch(() => setProctoringConfig({ enabled: false }));
+  }, []);
 
   // ── load token once
   useEffect(() => {
@@ -401,6 +413,7 @@ export default function QuizPage() {
 
     getOrCreateSession({ quizId: id, token: tokenRef.current })
       .then(({ session, isNew }) => {
+        sessionIdRef.current = session?._id || null;
         if (!isNew && session?.answers?.length > 0) {
           setSavedSession(session);
           setSessionPhase("prompt");
@@ -470,6 +483,14 @@ export default function QuizPage() {
       }
     );
   }, [quizData, buildFinalAnswers, id, mutate, messageApi, router]);
+
+  const { violationCount, lastWarning, clearWarning } = useProctoring({
+    config: proctoringConfig,
+    quizId: id,
+    sessionId: sessionIdRef.current,
+    token: tokenRef.current,
+    onAutoSubmit: handleSubmit,
+  });
 
   // ── quiz-level countdown
   useEffect(() => {
@@ -693,6 +714,16 @@ export default function QuizPage() {
     <div className="min-h-screen bg-mesh flex flex-col items-center justify-center px-4 py-10 select-none">
       {contextHolder}
 
+      {/* Proctoring warning */}
+      {proctoringConfig?.enabled && (
+        <ProctoringWarning
+          warning={lastWarning}
+          violationCount={violationCount}
+          maxViolations={proctoringConfig.maxViolations}
+          onDismiss={clearWarning}
+        />
+      )}
+
       {/* Session countdown banner */}
       {isSession && quizMeta?.expiresAt && (
         <SessionBanner
@@ -741,6 +772,14 @@ export default function QuizPage() {
         <div className="glass rounded-[2.5rem] shadow-2xl shadow-violet-100/50 p-8 md:p-12 border border-white">
           {/* Quiz-level timer bar */}
           <QuizTimerBar quizTimeLeft={quizTimeLeft} totalSeconds={quizTotalSeconds} />
+
+          {/* Proctoring violation counter */}
+          {proctoringConfig?.enabled && violationCount > 0 && (
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl mb-4">
+              <IoWarningOutline size={13} />
+              Warning {violationCount}/{proctoringConfig.maxViolations}
+            </div>
+          )}
 
           <div className="flex items-start justify-between mb-6 gap-6">
             <div className="flex-1">

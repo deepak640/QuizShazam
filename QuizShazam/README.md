@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# QuizShazam — Student Frontend
 
-## Getting Started
+Next.js 16 App Router application. Students take quizzes, view their profiles, and track progress here.
 
-First, run the development server:
+## Dev Server
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+PORT=3000 NODE_OPTIONS=--max-old-space-size=4096 next dev --webpack
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+> Always use `--webpack`. Turbopack panics on this version of Next.js 16.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+NEXT_PUBLIC_API_URL=http://localhost:4000
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
+```
 
-## Learn More
+## Pages
 
-To learn more about Next.js, take a look at the following resources:
+| Route | Description |
+|-------|-------------|
+| `/` | Home / landing |
+| `/login` | Email or Google login |
+| `/register` | Create account |
+| `/dashboard` | Quiz listing, grouped by subject |
+| `/dashboard/quiz/[id]` | Active quiz — timer, auto-save, proctoring |
+| `/profile` | Own profile — XP, streak, badges, history, score chart |
+| `/profile/quiz/[id]` | Detailed result for one quiz |
+| `/u/[username]` | Public profile — anyone can view |
+| `/leaderboard` | Global, weekly, subject rankings |
+| `/certificate/[id]` | Certificate for passed quizzes |
+| `/settings` | Password, 2FA, profile edit |
+| `/upload` | File upload |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Key Files
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+lib/api.js                  All API calls (Axios), auth headers, 401 redirect
+lib/firebase.js             Firebase config for Google OAuth
+hooks/useProctoring.js      Browser event listeners — tab, fullscreen, copy/paste
+components/
+  FloatingChat.jsx          AI chatbot with markdown rendering
+  ProctoringWarning.jsx     Violation toast (auto-dismisses in 4s)
+  Header.jsx                Top navigation
+  BarChart.jsx              Score history chart
+  Loader.jsx                Loading spinner
+```
 
-## Deploy on Vercel
+## Quiz Page Behaviour
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Timer**: quiz-level countdown (not per-question). Auto-submits at 0.
+- **Answer locking**: once you press Next, the answer is locked.
+- **Session persistence**: answers auto-saved every few seconds via PATCH. Resume on reload.
+- **Proctoring**: global config fetched from `/proctor/config`. Listeners attached if enabled.
+- **Fullscreen gate**: quiz can only be started in fullscreen.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Auth
+
+Token stored in cookie: `{ token, photoURL, refreshToken }`.
+All API calls read `Cookies.get("user")` and attach `Authorization: Bearer <token>`.
+`middleware.ts` protects `/dashboard`, `/profile`, `/upload` — redirects to `/?auth=required` if no cookie.

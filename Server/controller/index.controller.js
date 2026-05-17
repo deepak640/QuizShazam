@@ -413,7 +413,7 @@ const updateQuestion = async (req, res) => {
 
 const updateQuiz = async (req, res) => {
   const { id } = req.params;
-  const { title, description, subject, timerMinutes, allowPreviousQuestion, passingPercentage } = req.body;
+  const { title, description, subject, timerMinutes, allowPreviousQuestion, passingPercentage, proctoring } = req.body;
   try {
     const update = {};
     if (title !== undefined && title.trim()) update.title = title.trim();
@@ -429,6 +429,18 @@ const updateQuiz = async (req, res) => {
     if (passingPercentage !== undefined) {
       const val = parseInt(passingPercentage);
       if (!isNaN(val) && val >= 1 && val <= 100) update.passingPercentage = val;
+    }
+    if (proctoring !== undefined && typeof proctoring === "object") {
+      update.proctoring = {
+        enabled: Boolean(proctoring.enabled),
+        detectTabSwitch: proctoring.detectTabSwitch !== false,
+        fullscreenRequired: proctoring.fullscreenRequired !== false,
+        detectFullscreenExit: proctoring.detectFullscreenExit !== false,
+        blockCopyPaste: proctoring.blockCopyPaste !== false,
+        disableRightClick: proctoring.disableRightClick !== false,
+        maxViolations: Math.max(1, parseInt(proctoring.maxViolations) || 3),
+        autoSubmitOnViolationLimit: proctoring.autoSubmitOnViolationLimit !== false,
+      };
     }
 
     const quiz = await Quiz.findByIdAndUpdate(id, update, { new: true });
@@ -868,7 +880,7 @@ const getSettings = async (req, res) => {
 
 const updateSettings = async (req, res) => {
   try {
-    const { quizTimerSeconds, defaultTimerMinutes, allowPreviousQuestion } = req.body;
+    const { quizTimerSeconds, defaultTimerMinutes, allowPreviousQuestion, proctoring } = req.body;
     const update = {};
 
     if (quizTimerSeconds !== undefined) {
@@ -885,6 +897,18 @@ const updateSettings = async (req, res) => {
     }
     if (allowPreviousQuestion !== undefined) {
       update.allowPreviousQuestion = Boolean(allowPreviousQuestion);
+    }
+    if (proctoring !== undefined && typeof proctoring === "object") {
+      update.proctoring = {
+        enabled:                    Boolean(proctoring.enabled),
+        detectTabSwitch:            proctoring.detectTabSwitch !== false,
+        fullscreenRequired:         proctoring.fullscreenRequired !== false,
+        detectFullscreenExit:       proctoring.detectFullscreenExit !== false,
+        blockCopyPaste:             proctoring.blockCopyPaste !== false,
+        disableRightClick:          proctoring.disableRightClick !== false,
+        maxViolations:              Math.max(1, parseInt(proctoring.maxViolations) || 3),
+        autoSubmitOnViolationLimit: proctoring.autoSubmitOnViolationLimit !== false,
+      };
     }
 
     const settings = await Settings.findOneAndUpdate({}, update, { new: true, upsert: true });

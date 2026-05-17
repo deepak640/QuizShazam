@@ -1,53 +1,51 @@
-# Quiz-Shazam Application
+# QuizShazam — Product
 
-Quiz-Shazam is a web application that allows users to take quizzes on various topics, track their scores, and challenge their friends. Built using the MERN stack and Vite for fast production builds.
+This directory contains the core product: the student-facing frontend and the backend API.
 
-## Introduction
+## Structure
 
-The Quiz-Shazam application provides an engaging platform for users to test their knowledge on different subjects through interactive quizzes. Users can log in, select quizzes, and see their scores in their profile.
-
-## Features
-
-- google authentication
-- User authorization
-- select quizzes by category
-- score tracking feature
-- Responsive design for mobile and desktop
-
-
-## Run Locally
-
-Clone the project
-
-```bash
-  git clone https://github.com/yourusername/quiz-shazam.git
+```
+product/
+├── QuizShazam/   # Student frontend — Next.js 16, port 3000
+└── Server/       # REST API — Express.js + MongoDB, port 4000
 ```
 
-Go to the project directory
+## Quick Start
 
+### Backend (run first)
 ```bash
-  cd quizShazam
+cd Server
+npm install
+PORT=4000 nodemon app.js
 ```
 
-Install dependencies
-
+### Student Frontend
 ```bash
-  npm install
+cd QuizShazam
+npm install
+PORT=3000 NODE_OPTIONS=--max-old-space-size=4096 next dev --webpack
 ```
 
-Start the server
+> Use `--webpack` flag — Turbopack causes panics on Next.js 16.
 
-```bash
-  npm run dev
-```
+## Backend API Routes
 
-## Environment Variables
+| Prefix | File | Scope |
+|--------|------|-------|
+| `/` | `routes/index.routes.js` | Quiz CRUD, leaderboard, analytics, settings |
+| `/users` | `routes/users.routes.js` | Auth, submissions, profile, badges, 2FA |
+| `/proctor` | `routes/proctor.routes.js` | Proctoring violations and config |
 
-To run this project, you will need to add the following environment variables to your .env file
+## Student Frontend Pages
 
-`VITE_REACT_API_URL`
+| Route | Description |
+|-------|-------------|
+| `/dashboard` | Browse quizzes by subject |
+| `/dashboard/quiz/[id]` | Take a quiz |
+| `/profile` | Stats, XP, streak, badges, quiz history |
+| `/u/[username]` | Public profile (no login required) |
+| `/leaderboard` | Rankings |
+| `/certificate/[id]` | Pass certificate |
+| `/settings` | Account, 2FA, password |
 
-`MONGO_URI`
-
-`JWT_SECRET`
-
+See [PROJECT_OVERVIEW.md](../PROJECT_OVERVIEW.md) for full technical documentation.

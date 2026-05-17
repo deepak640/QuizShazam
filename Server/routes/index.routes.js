@@ -16,7 +16,7 @@ router.post("/create-quiz", Authentication, async (req, res) => {
   const array = req.body;
   try {
     const quizzes = await Promise.all(
-      array.map(async ({ title, description, questions, authorId, timerMinutes, allowPreviousQuestion, passingPercentage }) => {
+      array.map(async ({ title, description, questions, authorId, timerMinutes, allowPreviousQuestion, passingPercentage, proctoring }) => {
         const subjectName = title;
 
         let quizTitle = title;
@@ -49,6 +49,16 @@ router.post("/create-quiz", Authentication, async (req, res) => {
           timerMinutes: timerMinutes ? parseInt(timerMinutes) : 5,
           allowPreviousQuestion: allowPreviousQuestion === true || allowPreviousQuestion === "true",
           passingPercentage: passingPercentage ? parseInt(passingPercentage) : 70,
+          proctoring: proctoring && proctoring.enabled ? {
+            enabled: true,
+            detectTabSwitch: proctoring.detectTabSwitch !== false,
+            fullscreenRequired: proctoring.fullscreenRequired !== false,
+            detectFullscreenExit: proctoring.detectFullscreenExit !== false,
+            blockCopyPaste: proctoring.blockCopyPaste !== false,
+            disableRightClick: proctoring.disableRightClick !== false,
+            maxViolations: Math.max(1, parseInt(proctoring.maxViolations) || 3),
+            autoSubmitOnViolationLimit: proctoring.autoSubmitOnViolationLimit !== false,
+          } : { enabled: false },
         });
         await quiz.save();
 

@@ -45,8 +45,10 @@ mongoose
     console.error("Failed to connect to MongoDB:", err);
   });
 
+const proctorRouter = require("./routes/proctor.routes");
 app.use("/", indexRouter);
 app.use("/users", usersRouter);
+app.use("/proctor", proctorRouter);
 
 app.listen(port, () => {
   console.log("Listening on port " + port);

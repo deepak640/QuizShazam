@@ -217,3 +217,17 @@ export const getPublicProfile = async ({ queryKey }) => {
   const res = await axios.get(`${API_URL}/u/${encodeURIComponent(username)}`);
   return res.data;
 };
+
+export const logProctorViolation = async ({ quizId, sessionId, eventType, metadata, token }) => {
+  const res = await axios.post(
+    `${API_URL}/proctor/log`,
+    { quizId, sessionId, eventType, metadata },
+    { headers: authHeader(token) }
+  );
+  return res.data;
+};
+
+export const getQuizProctoringConfig = async () => {
+  const res = await axios.get(`${API_URL}/proctor/config`);
+  return res.data;
+};
