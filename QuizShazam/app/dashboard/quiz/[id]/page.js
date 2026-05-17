@@ -14,6 +14,9 @@ import {
   IoVideocamOffOutline, IoVideocamOutline,
   IoShieldCheckmarkOutline, IoCloudDoneOutline,
   IoCloudUploadOutline, IoWarningOutline,
+  IoTrophyOutline, IoFlameOutline, IoSparklesOutline,
+  IoArrowUpOutline, IoBookOutline, IoRibbonOutline,
+  IoCheckmarkCircle, IoCloseCircle, IoArrowForward,
 } from "react-icons/io5";
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
@@ -232,6 +235,99 @@ function QuizTimerBar({ quizTimeLeft, totalSeconds }) {
   );
 }
 
+// ── Post-quiz results overlay ─────────────────────────────────────────────────
+function PostQuizOverlay({ data, quizTitle, onViewProfile, onRetake }) {
+  const { passed, percentage, xpEarned, streak, rankBefore, rankAfter, newBadges = [], weakTopics = [] } = data;
+  const rankImproved = rankBefore && rankAfter && rankAfter < rankBefore;
+
+  const rows = [
+    {
+      icon: <IoSparklesOutline size={18} />,
+      color: "text-violet-600 bg-violet-50",
+      label: `+${xpEarned} XP earned`,
+      show: xpEarned > 0,
+    },
+    {
+      icon: <IoFlameOutline size={18} />,
+      color: "text-orange-500 bg-orange-50",
+      label: `${streak} day streak${streak > 1 ? " maintained 🔥" : " started!"}`,
+      show: streak > 0,
+    },
+    {
+      icon: <IoRibbonOutline size={18} />,
+      color: "text-yellow-600 bg-yellow-50",
+      label: newBadges.length === 1
+        ? `New badge unlocked: ${newBadges[0].id.replace(/_/g, " ")}`
+        : `${newBadges.length} new badges unlocked!`,
+      show: newBadges.length > 0,
+    },
+    {
+      icon: <IoArrowUpOutline size={18} />,
+      color: "text-emerald-600 bg-emerald-50",
+      label: `Rank improved: #${rankBefore} → #${rankAfter}`,
+      show: rankImproved,
+    },
+    {
+      icon: <IoBookOutline size={18} />,
+      color: "text-blue-600 bg-blue-50",
+      label: `Weak topic${weakTopics.length > 1 ? "s" : ""} identified: ${weakTopics.join(", ")}`,
+      show: weakTopics.length > 0,
+    },
+  ].filter(r => r.show);
+
+  return (
+    <div className="fixed inset-0 z-[300] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+        {/* Header */}
+        <div className={`p-6 text-center ${passed ? "bg-gradient-to-br from-violet-700 to-indigo-500" : "bg-gradient-to-br from-red-600 to-rose-500"}`}>
+          <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-3">
+            {passed
+              ? <IoTrophyOutline size={32} className="text-white" />
+              : <IoCloseCircle size={32} className="text-white" />
+            }
+          </div>
+          <p className="text-white/80 text-xs font-semibold uppercase tracking-widest mb-1">
+            {passed ? "Quiz Passed!" : "Not Passed"}
+          </p>
+          <p className="text-5xl font-black text-white">{percentage}%</p>
+        </div>
+
+        {/* Stat rows */}
+        {rows.length > 0 && (
+          <div className="px-5 py-4 space-y-2.5">
+            {rows.map((r, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${r.color}`}>
+                  {r.icon}
+                </div>
+                <p className="text-sm font-semibold text-slate-700">{r.label}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="px-5 pb-6 pt-2 flex flex-col gap-2.5">
+          <button
+            onClick={onViewProfile}
+            className="w-full py-3 bg-gradient-to-r from-violet-700 to-indigo-500 text-white font-bold rounded-2xl shadow-lg shadow-violet-200 hover:opacity-90 transition flex items-center justify-center gap-2"
+          >
+            View Profile <IoArrowForward size={16} />
+          </button>
+          {!passed && (
+            <button
+              onClick={onRetake}
+              className="w-full py-3 border border-slate-200 text-slate-700 font-semibold rounded-2xl hover:bg-slate-50 transition text-sm"
+            >
+              Retake Quiz
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function QuizPage() {
   const { id } = useParams();
@@ -357,12 +453,12 @@ export default function QuizPage() {
     mutate(
       { values: { quizId: id, answers: finalAnswers }, token },
       {
-        onSuccess: (data) => {
+        onSuccess: () => {
           localStorage.removeItem(LS_KEY(id));
           localStorage.removeItem(LS_START_KEY(id));
           if (typeof document !== "undefined" && document.exitFullscreen)
             document.exitFullscreen().catch(() => {});
-          messageApi.open({ type: "success", content: data.message, onClose: () => router.push("/profile") });
+          router.push("/profile");
         },
         onError: (err) => {
           const msg = err.response?.data?.message || err.response?.data?.error || "Submission failed";

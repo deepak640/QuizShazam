@@ -17,7 +17,10 @@ const userSchema = new Schema({
     id:       { type: String },
     earnedAt: { type: Date, default: Date.now },
   }],
-  dailyChallengeDate: { type: String, default: null }, // "YYYY-MM-DD" of last daily completion
+  dailyChallengeDate: { type: String, default: null },
+  xp: { type: Number, default: 0 },
+  streak: { type: Number, default: 0 },
+  streakLastDate: { type: String, default: null }, // "YYYY-MM-DD"
   createdAt: { type: Date, default: Date.now },
 });
 

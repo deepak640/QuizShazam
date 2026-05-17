@@ -339,24 +339,82 @@ const quizSubmission = async (req, res) => {
       passed,
     });
     await response.save();
-    await User.findByIdAndUpdate(userId, {
-      $push: { quizzesTaken: quizId },
-    });
+
+    // ── Rank before update ─────────────────────────────────────────────────
+    const allResponses = await Response.aggregate([
+      { $match: { user: { $exists: true, $ne: null } } },
+      { $group: { _id: "$user", totalScore: { $sum: "$score" } } },
+      { $sort: { totalScore: -1 } },
+    ]);
+    const rankBefore = allResponses.findIndex(r => r._id.toString() === userId.toString()) + 1;
+
+    await User.findByIdAndUpdate(userId, { $addToSet: { quizzesTaken: quizId } });
+
     // Mark any active quiz session as submitted (non-blocking)
     markSessionSubmitted(userId, quizId);
 
-    // Daily challenge check
-    const today = new Date().toISOString().slice(0, 10);
-    const user = await User.findById(userId).select("dailyChallengeDate");
-    const isDailyChallenge = req.body.isDailyChallenge && user?.dailyChallengeDate !== today;
-    if (isDailyChallenge) {
-      await User.findByIdAndUpdate(userId, { dailyChallengeDate: today });
-    }
+    // ── XP calculation ─────────────────────────────────────────────────────
+    const xpEarned = Math.round(percentage * 0.5) + (passed ? 25 : 0);
 
-    // Award badges (non-blocking)
+    // ── Streak calculation ─────────────────────────────────────────────────
+    const today = new Date().toISOString().slice(0, 10);
+    const user = await User.findById(userId).select("dailyChallengeDate xp streak streakLastDate");
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    let newStreak = 1;
+    if (user.streakLastDate === yesterday) newStreak = (user.streak || 0) + 1;
+    else if (user.streakLastDate === today) newStreak = user.streak || 1;
+
+    // ── Daily challenge check ──────────────────────────────────────────────
+    const isDailyChallenge = req.body.isDailyChallenge && user?.dailyChallengeDate !== today;
+    const streakUpdate = user.streakLastDate !== today
+      ? { streak: newStreak, streakLastDate: today }
+      : {};
+
+    await User.findByIdAndUpdate(userId, {
+      $inc: { xp: xpEarned },
+      ...streakUpdate,
+      ...(isDailyChallenge ? { dailyChallengeDate: today } : {}),
+    });
+
+    // ── Weak topics ────────────────────────────────────────────────────────
+    const wrongAnswers = answers.filter((a, idx) => {
+      const q = quiz.questions[idx];
+      if (!q) return false;
+      if (q.isMultiSelect) {
+        const correct = q.options.map((o, i) => o.isCorrect ? i : -1).filter(i => i !== -1);
+        const sel = Array.isArray(a.selectedOptions) ? a.selectedOptions : [];
+        return !(correct.every(i => sel.includes(i)) && sel.every(i => correct.includes(i)));
+      }
+      const correctOpt = q.options.find(o => o.isCorrect);
+      return !(correctOpt && q.options[a.selectedOption]?.text === correctOpt.text);
+    });
+    const weakTopics = [...new Set(
+      wrongAnswers.map((a, idx) => quiz.questions[idx]?.topic).filter(Boolean)
+    )].slice(0, 3);
+
+    // ── Rank after update ──────────────────────────────────────────────────
+    const allResponsesAfter = await Response.aggregate([
+      { $match: { user: { $exists: true, $ne: null } } },
+      { $group: { _id: "$user", totalScore: { $sum: "$score" } } },
+      { $sort: { totalScore: -1 } },
+    ]);
+    const rankAfter = allResponsesAfter.findIndex(r => r._id.toString() === userId.toString()) + 1;
+
+    // ── Award badges ───────────────────────────────────────────────────────
     const newBadges = await awardBadges(userId, score, answers.length, quizId, isDailyChallenge);
 
-    res.status(201).send({ message: "Quiz submitted successfully", newBadges, passed, percentage: Math.round(percentage) });
+    res.status(201).send({
+      message: "Quiz submitted successfully",
+      newBadges,
+      passed,
+      percentage: Math.round(percentage),
+      xpEarned,
+      totalXp: (user.xp || 0) + xpEarned,
+      streak: newStreak,
+      rankBefore: rankBefore || null,
+      rankAfter: rankAfter || null,
+      weakTopics,
+    });
   } catch (error) {
     res.status(500).send({ message: "Error submitting quiz", error });
   }

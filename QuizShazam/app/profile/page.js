@@ -10,6 +10,7 @@ import { useRef, useState } from "react";
 import {
   IoArrowForward, IoTrophyOutline, IoBarChartOutline, IoBookOutline,
   IoCallOutline, IoRibbonOutline, IoShareOutline, IoChevronBack, IoChevronForward,
+  IoFlameOutline, IoSparklesOutline,
 } from "react-icons/io5";
 
 const BarChart = dynamic(() => import("@/components/BarChart"), { ssr: false });
@@ -214,6 +215,16 @@ export default function Profile() {
                     {earnedBadges.length} badge{earnedBadges.length !== 1 ? "s" : ""}
                   </span>
                 )}
+                {profile.xp > 0 && (
+                  <span className="text-xs bg-violet-400/20 text-violet-100 px-2.5 py-1 rounded-full font-medium flex items-center gap-1">
+                    <IoSparklesOutline size={10} /> {profile.xp} XP
+                  </span>
+                )}
+                {profile.streak > 0 && (
+                  <span className="text-xs bg-orange-400/20 text-orange-200 px-2.5 py-1 rounded-full font-medium flex items-center gap-1">
+                    <IoFlameOutline size={10} /> {profile.streak} day streak
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -231,11 +242,12 @@ export default function Profile() {
       </div>
 
       {/* ── Stats row ──────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {[
-          { icon: <IoBookOutline size={18} />, label: "Quizzes Taken", value: quizzes.length, color: "text-violet-700 bg-violet-50" },
-          { icon: <IoTrophyOutline size={18} />, label: "Best Score",    value: bestScore,      color: "text-amber-600  bg-amber-50"  },
-          { icon: <IoBarChartOutline size={18} />, label: "Avg. Score",  value: avgScore,       color: "text-indigo-600 bg-indigo-50" },
+          { icon: <IoBookOutline size={18} />,     label: "Quizzes Taken", value: quizzes.length,   color: "text-violet-700 bg-violet-50" },
+          { icon: <IoTrophyOutline size={18} />,   label: "Best Score",    value: bestScore,         color: "text-amber-600  bg-amber-50"  },
+          { icon: <IoSparklesOutline size={18} />, label: "Total XP",      value: `${profile.xp || 0} XP`, color: "text-purple-600 bg-purple-50" },
+          { icon: <IoFlameOutline size={18} />,    label: "Day Streak",    value: profile.streak || 0, color: "text-orange-500 bg-orange-50" },
         ].map((stat) => (
           <div key={stat.label} className="bg-white rounded-xl sm:rounded-2xl border border-slate-100 shadow-sm p-3 sm:p-5 text-center">
             <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 ${stat.color}`}>
